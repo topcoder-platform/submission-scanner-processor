@@ -1,0 +1,39 @@
+{
+  "name": "submission-scanner-processor",
+  "version": "1.0.0",
+  "description": "Topcoder Submission Scanner Processor",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix"
+  },
+  "devDependencies": {
+    "standard": "^11.0.1"
+  },
+  "dependencies": {
+    "amazon-s3-uri": "0.0.3",
+    "aws-sdk": "^2.300.0",
+    "axios": "^0.18.0",
+    "bluebird": "^3.5.1",
+    "clamav.js": "^0.12.0",
+    "co": "^4.6.0",
+    "config": "^1.21.0",
+    "get-parameter-names": "^0.3.0",
+    "joi": "^9.0.4",
+    "lodash": "^4.17.10",
+    "no-kafka": "^3.2.4",
+    "streamifier": "^0.1.1",
+    "tc-core-library-js": "appirio-tech/tc-core-library-js.git#feature/m2mtoken",
+    "topcoder-healthcheck-dropin": "^1.0.2",
+    "winston": "^2.2.0"
+  },
+  "engines": {
+    "node": "8.x"
+  },
+  "standard": {
+    "env": [
+      "mocha"
+    ]
+  }
+}
