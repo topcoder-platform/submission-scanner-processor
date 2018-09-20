@@ -29,7 +29,7 @@ function * downloadFile (fileURL) {
   if (/.*amazonaws.*/.test(fileURL)) {
     const { bucket, key } = AmazonS3URI(fileURL)
     logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
-    downloadedFile = yield s3.getObjectAsync({ Bucket: bucket, Key: key })
+    downloadedFile = yield s3.getObject({ Bucket: bucket, Key: key }).promise()
     return downloadedFile.Body
   } else {
     logger.info(`downloadFile(): file is (hopefully) a public URL at ${fileURL}`)
