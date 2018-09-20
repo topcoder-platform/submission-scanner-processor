@@ -14,6 +14,7 @@ function * processScan (message) {
   // Scan the file using ClamAV
   const isInfected = yield helper.scanWithClamAV(message.payload.url)
   // Update Scanning results
+  message.timestamp = (new Date()).toISOString()
   message.payload.status = 'scanned'
   message.payload.isInfected = isInfected
 
