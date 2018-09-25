@@ -2,6 +2,7 @@
  * Contains generic helper methods
  */
 
+global.Promise = require('bluebird')
 const _ = require('lodash')
 const config = require('config')
 const clamav = require('clamav.js')

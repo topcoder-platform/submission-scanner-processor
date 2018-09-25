@@ -20,7 +20,7 @@ function * processScan (message) {
 
   yield helper.postToBusAPI(message)
 
-  return true
+  return message
 }
 
 processScan.schema = {
