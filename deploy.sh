@@ -54,8 +54,8 @@ eval $(aws ecr get-login --region $AWS_REGION --no-include-email)
 docker push $CLAMAVTAG
 docker push $TAG
 
-#ecs-cli configure --region us-east-1 --cluster $CLUSTER
-#ecs-cli compose --project-name submission-scanning-processor-svc service up
+ecs-cli configure --region us-east-1 --cluster $CLUSTER
+ecs-cli compose --project-name submission-scanning-processor-svc service up
 
 
 
