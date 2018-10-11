@@ -1,10 +1,21 @@
 version: '3'
 services:
+  clamav:
+    container_name: clamav
+    image: mkodockx/docker-clamav
+    restart: always
+    ports:
+      - "3310:3310"
   submission-scanner-processor:
     build:
       context: ../
       dockerfile: docker/Dockerfile
     env_file:
       - api.env
+    environment:
+      - CLAMAV_HOST=localhost
+      - CLAMAV_PORT=3310
+    depends_on:
+      - clamav
     command: npm start
-    network_mode: "host"
+    network_mode: host
