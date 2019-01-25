@@ -6,12 +6,11 @@ module.exports = {
   DISABLE_LOGGING: process.env.DISABLE_LOGGING || false, // If true, logging will be disabled
   LOG_LEVEL: process.env.LOG_LEVEL || 'debug',
 
-  KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'submission-scanner-processor-group',
   KAFKA_URL: process.env.KAFKA_URL || 'localhost:9092',
   // below are used for secure Kafka connection, they are optional
   // for the local Kafka, they are not needed
-  KAFKA_CLIENT_CERT: process.env.KAFKA_CLIENT_CERT ? process.env.KAFKA_CLIENT_CERT.replace(/\\n/g, '\n') : null,
-  KAFKA_CLIENT_CERT_KEY: process.env.KAFKA_CLIENT_CERT_KEY ? process.env.KAFKA_CLIENT_CERT_KEY.replace(/\\n/g, '\n') : null,
+  KAFKA_CLIENT_CERT: process.env.KAFKA_CLIENT_CERT ? process.env.KAFKA_CLIENT_CERT.replace(/\\n/g, "\n") : null,
+  KAFKA_CLIENT_CERT_KEY: process.env.KAFKA_CLIENT_CERT_KEY ? process.env.KAFKA_CLIENT_CERT_KEY.replace(/\\n/g, "\n") : null,
 
   aws: {
     REGION: process.env.AWS_REGION || 'us-east-1' // AWS Region to be used by the application
