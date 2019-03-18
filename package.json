@@ -30,7 +30,7 @@
     "lodash": "^4.17.10",
     "no-kafka": "^3.2.4",
     "streamifier": "^0.1.1",
-    "tc-core-library-js": "appirio-tech/tc-core-library-js.git#feature/m2mtoken",
+    "tc-core-library-js": "appirio-tech/tc-core-library-js.git#v2.6",
     "topcoder-healthcheck-dropin": "^1.0.2",
     "winston": "^2.2.0"
   },
