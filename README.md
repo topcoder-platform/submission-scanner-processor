@@ -133,6 +133,7 @@ bin/kafka-console-producer.sh --broker-list localhost:9092 --topic avscan.action
 {"topic":"avscan.action.scan","originator":"av-scanner-service","timestamp":"2018-09-19T12:12:28.434Z","mime-type":"application/json","payload":{"status":"unscanned","submissionId":"a12a4180-65aa-42ec-a945-5fd21dec0503","url":"https://drive.google.com/file/d/16kkvI-itLYaH8IuVDrLsRL94t-HK1w19/view?usp=sharing","fileName":"a12a4180-65aa-42ec-a945-5fd21dec0503.zip"}}
 ```
 
+
 8. File in the above URL is a clean submission, hence the following message will be posted to Bus API
 
 ```
