@@ -1,5 +1,5 @@
 FROM debian:jessie-slim
-
+RUN sed -i '/jessie-updates/d' /etc/apt/sources.list
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y -qq curl clamav clamav-daemon clamav-freshclam wget gettext-base && \
