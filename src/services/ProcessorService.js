@@ -5,20 +5,36 @@
 const Joi = require('joi')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
+const tracer = require('../common/tracer')
 
 /**
  * Process Scan request event
  * @param {Object} message the message
  */
-function * processScan (message) {
+async function processScan (message, span) {
+  // Span is undefined during unittests. Create empty Spans object in order to avoid errors
+  if (!span) {
+    span = require('../common/tracer').startSpans('ProcessorService.processScan')
+  }
+
   // Scan the file using ClamAV
-  const isInfected = yield helper.scanWithClamAV(message.payload.url)
+  const isInfected = await helper.scanWithClamAV(message.payload.url, span)
   // Update Scanning results
   message.timestamp = (new Date()).toISOString()
   message.payload.status = 'scanned'
   message.payload.isInfected = isInfected
 
-  yield helper.postToBusAPI(message)
+  let sendMessageSpan = tracer.startChildSpans('sendMessage', span)
+  sendMessageSpan.setTag('topic', message.topic)
+  sendMessageSpan.setTag('originator', message.originator)
+  sendMessageSpan.log({
+    event: 'debug',
+    payload: message.payload
+  })
+
+  await helper.postToBusAPI(message)
+
+  sendMessageSpan.finish()
 
   return message
 }

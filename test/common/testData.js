@@ -11,7 +11,7 @@ const goodSubmission = {
   'mime-type': 'application/json',
   payload: {
     submissionId: uuid(),
-    url: 'https://drive.google.com/file/d/1l7KPjqzHtF9dA94cMjJ4a32yRvPEQIg4/view?usp=sharing',
+    url: 'https://drive.google.com/uc?export=download&id=1RXpb4LvtWu864OZIYJS-zm4213RMckad',
     fileName: 'good.zip',
     status: 'unscanned'
   }
@@ -24,7 +24,7 @@ const infectedSubmission = {
   'mime-type': 'application/json',
   payload: {
     submissionId: uuid(),
-    url: 'https://www.dropbox.com/s/31idvhiz9l7v35k/EICAR_submission.zip?dl=1',
+    url: 'http://www.eicar.org/download/eicar_com.zip',
     fileName: 'infected.zip',
     status: 'unscanned'
   }
@@ -37,7 +37,7 @@ const s3Submission = {
   'mime-type': 'application/json',
   payload: {
     submissionId: uuid(),
-    url: 'https://s3.amazonaws.com/topcoder-dev-submissions-tests/good_submission.zip',
+    url: 'https://s3.amazonaws.com/tc-test-submission-scan/good.zip',
     fileName: 's3.zip',
     status: 'unscanned'
   }

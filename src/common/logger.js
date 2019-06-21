@@ -47,6 +47,10 @@ logger.logFullError = function (err, signature) { // eslint-disable-line
 function _sanitizeObject (obj) {
   try {
     return JSON.parse(JSON.stringify(obj, (name, value) => {
+      const removeFields = ['span']
+      if (_.includes(removeFields, name)) {
+        return '<removed>'
+      }
       if (_.isArray(value) && value.length > 30) {
         return 'Array(' + value.length + ')'
       }
@@ -81,15 +85,14 @@ logger.decorateWithLogging = function (service) {
   }
   _.each(service, (method, name) => {
     const params = method.params || getParams(method)
-    service[name] = function * () {
+    service[name] = async function () {
       logger.debug('ENTER ' + name)
       logger.debug('input arguments')
       const args = Array.prototype.slice.call(arguments)
       logger.debug(util.inspect(_sanitizeObject(_combineObject(params, args))))
       try {
-        const result = yield * method.apply(this, arguments)
+        const result = await method.apply(this, arguments)
         logger.debug('EXIT ' + name)
-        logger.debug('output arguments')
         if (result !== null && result !== undefined) {
           logger.debug('output arguments')
           logger.debug(util.inspect(_sanitizeObject(result)))
@@ -115,18 +118,24 @@ logger.decorateWithValidators = function (service) {
       return
     }
     const params = getParams(method)
-    service[name] = function * () {
+    // Array of field names that should not be normalized by Joi
+    const noNormalizedFields = ['span']
+    service[name] = async function () {
       const args = Array.prototype.slice.call(arguments)
       const value = _combineObject(params, args)
-      const normalized = Joi.attempt(value, method.schema)
+      const normalized = Joi.attempt(_.omit(value, noNormalizedFields), method.schema)
       const newArgs = []
       // Joi will normalize values
       // for example string number '1' to 1
       // if schema type is number
       _.each(params, (param) => {
-        newArgs.push(normalized[param])
+        if (_.includes(noNormalizedFields, param)) {
+          newArgs.push(value[param])
+        } else {
+          newArgs.push(normalized[param])
+        }
       })
-      return yield method.apply(this, newArgs)
+      return method.apply(this, newArgs)
     }
     service[name].params = params
   })

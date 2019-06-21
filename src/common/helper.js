@@ -13,6 +13,7 @@ const m2mAuth = require('tc-core-library-js').auth.m2m
 const m2m = m2mAuth(_.pick(config, ['AUTH0_URL', 'AUTH0_AUDIENCE', 'TOKEN_CACHE_TIME', 'AUTH0_PROXY_SERVER_URL']))
 const AWS = require('aws-sdk')
 const AmazonS3URI = require('amazon-s3-uri')
+const tracer = require('./tracer')
 
 AWS.config.region = config.get('aws.REGION')
 const s3 = new AWS.S3()
@@ -25,24 +26,33 @@ const clamavScanner = clamav.createScanner(config.CLAMAV_PORT, config.CLAMAV_HOS
  * @param{String} fileURL URL of the file to be downloaded
  * @returns {Buffer} Buffer of downloaded file
  */
-function * downloadFile (fileURL) {
+async function downloadFile (fileURL, parentSpan) {
+  let downloadSpan = tracer.startChildSpans('downloadFile', parentSpan)
+  downloadSpan.setTag('fileURL', fileURL)
+
   let downloadedFile
   if (/.*amazonaws.*/.test(fileURL)) {
     const { bucket, key } = AmazonS3URI(fileURL)
     logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
-    downloadedFile = yield s3.getObject({ Bucket: bucket, Key: key }).promise()
+    downloadedFile = await s3.getObject({ Bucket: bucket, Key: key }).promise()
+
+    downloadSpan.finish()
     return downloadedFile.Body
   } else {
     logger.info(`downloadFile(): file is (hopefully) a public URL at ${fileURL}`)
-    downloadedFile = yield request.get(fileURL, { responseType: 'arraybuffer' })
+    downloadedFile = await request.get(fileURL, { responseType: 'arraybuffer' })
+
+    downloadSpan.finish()
     return downloadedFile.data
   }
 }
 
-function * scanWithClamAV (fileURL) {
+async function scanWithClamAV (fileURL, parentSpan) {
   // Download file from URL
-  const downloadedFile = yield downloadFile(fileURL)
+  const downloadedFile = await downloadFile(fileURL, parentSpan)
   // Scan
+  let scanSpan = tracer.startChildSpans('scanWithClamAV', parentSpan)
+  scanSpan.setTag('fileURL', fileURL)
   const fileStream = streamifier.createReadStream(downloadedFile)
   return new Promise((resolve, reject) => {
     clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
@@ -51,8 +61,12 @@ function * scanWithClamAV (fileURL) {
       }
       // Return True / False depending on Scan result
       if (malicious) {
+        scanSpan.setTag('malicious', 'true')
+        scanSpan.finish()
         resolve(true)
       } else {
+        scanSpan.setTag('malicious', 'false')
+        scanSpan.finish()
         resolve(false)
       }
     })
@@ -62,8 +76,8 @@ function * scanWithClamAV (fileURL) {
 /* Function to get M2M token
  * @returns {Promise}
  */
-function * getM2Mtoken () {
-  return yield m2m.getMachineToken(config.AUTH0_CLIENT_ID, config.AUTH0_CLIENT_SECRET)
+async function getM2Mtoken () {
+  return m2m.getMachineToken(config.AUTH0_CLIENT_ID, config.AUTH0_CLIENT_SECRET)
 }
 
 /**
@@ -71,17 +85,17 @@ function * getM2Mtoken () {
  * @param{Object} reqBody Body of the request to be Posted
  * @returns {Promise}
  */
-function * postToBusAPI (reqBody) {
+async function postToBusAPI (reqBody) {
   // M2M token necessary for pushing to Bus API
-  const token = yield getM2Mtoken()
+  const token = await getM2Mtoken()
 
   Promise.promisifyAll(request)
 
   // Post the request body to Bus API
-  yield request
+  await request
     .post(config.BUSAPI_EVENTS_URL, reqBody,
       { headers: { 'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json' }})
+        'Content-Type': 'application/json' } })
 }
 
 module.exports = {

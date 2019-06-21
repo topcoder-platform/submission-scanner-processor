@@ -10,13 +10,13 @@ services:
       - MAX_FILE_SIZE=500M
       - MAX_STREAM_LENGTH=500M
     hostname: clamav
-    restart: always 
+    restart: always
     logging:
       driver: awslogs
-      options: 
+      options:
         awslogs-group: /aws/ecs/submission-scanner-processor-service
         awslogs-region: us-east-1
-        awslogs-stream-prefix: clam_server     
+        awslogs-stream-prefix: clam_server
   app:
     image: app:latest
     container_name: submission-scanner-processor
@@ -37,11 +37,10 @@ services:
       - clamav
     logging:
       driver: awslogs
-      options: 
+      options:
         awslogs-group: /aws/ecs/submission-scanner-processor-service
         awslogs-region: us-east-1
         awslogs-stream-prefix: submission_scanner
     env_file:
       - api.env
-    command: npm start  
- 
+    command: npm start
