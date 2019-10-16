@@ -3,7 +3,6 @@
  */
 
 global.Promise = require('bluebird')
-const _ = require('lodash')
 const config = require('config')
 const logger = require('./common/logger')
 const Kafka = require('no-kafka')
@@ -12,11 +11,11 @@ const ProcessorService = require('./services/ProcessorService')
 const healthcheck = require('topcoder-healthcheck-dropin')
 
 // create consumer
-const options = { connectionString: config.KAFKA_URL }
+const options = { connectionString: config.KAFKA_URL, groupId: config.KAFKA_GROUP_ID }
 if (config.KAFKA_CLIENT_CERT && config.KAFKA_CLIENT_CERT_KEY) {
   options.ssl = { cert: config.KAFKA_CLIENT_CERT, key: config.KAFKA_CLIENT_CERT_KEY }
 }
-const consumer = new Kafka.SimpleConsumer(options)
+const consumer = new Kafka.GroupConsumer(options)
 
 const topics = [config.AVSCAN_TOPIC]
 
@@ -51,9 +50,14 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, (
   return co(function * () {
     yield ProcessorService.processScan(messageJSON)
   })
-    // commit offset
-    .then(() => consumer.commitOffset({ topic, partition, offset: m.offset }))
-    .catch((err) => logger.error(err))
+    // commit offset regardless of errors
+    .then(() => {
+      consumer.commitOffset({ topic, partition, offset: m.offset })
+    })
+    .catch((err) => {
+      logger.error(err)
+      consumer.commitOffset({ topic, partition, offset: m.offset })
+    })
 })
 
 /*
@@ -72,10 +76,15 @@ function check () {
 }
 
 consumer
-  .init()
+  .init([{
+    subscriptions: topics,
+    handler: dataHandler
+  }])
   // consume configured topics
   .then(() => {
-    healthcheck.init([check]) // Topcoder health check plugin initialization
-    _.each(topics, (tp) => consumer.subscribe(tp, { time: Kafka.LATEST_OFFSET }, dataHandler))
+    logger.info('Initialized.......')
+    healthcheck.init([check])
+    logger.info('Adding topics successfully.......')
+    logger.info(topics)
+    logger.info('Kick Start.......')
   })
-  .catch((err) => logger.error(err))
