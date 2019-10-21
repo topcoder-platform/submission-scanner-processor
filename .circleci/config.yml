@@ -35,7 +35,6 @@ jobs:
             ./buildenv.sh -e DEV -b dev-global-appvar,dev-submission-scanner-processor-buildvar
             source buildenvvar
             ./deploy.sh av-scanner-service
-
   "build-prod":
     <<: *defaults
     steps:
