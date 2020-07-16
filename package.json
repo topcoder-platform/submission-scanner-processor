@@ -27,7 +27,7 @@
     "config": "^1.21.0",
     "get-parameter-names": "^0.3.0",
     "joi": "^9.0.4",
-    "lodash": "^4.17.10",
+    "lodash": "^4.17.19",
     "no-kafka": "^3.2.4",
     "streamifier": "^0.1.1",
     "tc-core-library-js": "appirio-tech/tc-core-library-js.git#v2.6",
