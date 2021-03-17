@@ -19,6 +19,7 @@ The following parameters can be set in config files or in env variables:
 - KAFKA_CLIENT_CERT_KEY: Kafka connection private key, optional; default value is undefined;
     if not provided, then SSL connection is not used, direct insecure connection is used;
     if provided, it can be either path to private key file or private key content
+- KAFKA_GROUP_ID: the Kafka group id, default value is 'submission-scanner-processor'
 - AVSCAN_TOPIC: Topic for AV Scan related actions, default value is 'avscan.action.scan'
 - CLAMAV_HOST: Host of Clam AV
 - CLAMAV_PORT: Port of Clam AV
@@ -40,7 +41,7 @@ Also note that there is a `/health` endpoint that checks for the health of the a
   `bin/kafka-server-start.sh config/server.properties`
 - note that the zookeeper server is at localhost:2181, and Kafka server is at localhost:9092
 - use another terminal, go to same directory, create some topics:
-```  
+```
   bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic avscan.action.scan
 ```
 - verify that the topics are created:
@@ -139,5 +140,3 @@ bin/kafka-console-producer.sh --broker-list localhost:9092 --topic avscan.action
 ```
 {"topic":"avscan.action.scan","originator":"av-scanner-service","timestamp":"2018-09-19T12:12:28.434Z","mime-type":"application/json","payload":{"status":"scanned","submissionId":"a12a4180-65aa-42ec-a945-5fd21dec0503","url":"https://drive.google.com/file/d/16kkvI-itLYaH8IuVDrLsRL94t-HK1w19/view?usp=sharing","fileName":"a12a4180-65aa-42ec-a945-5fd21dec0503.zip","isInfected":false}}
 ```
-
-Token Commit.
