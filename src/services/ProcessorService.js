@@ -11,11 +11,23 @@ const helper = require('../common/helper')
  * @param {Object} message the message
  */
 function * processScan (message) {
-  // Scan the file using ClamAV
-  const isInfected = yield helper.scanWithClamAV(message.payload.url)
-  // Update Scanning results
   message.timestamp = (new Date()).toISOString()
   message.payload.status = 'scanned'
+
+  const downloadedFile = yield helper.downloadFile(message.payload.url);
+
+  // Scan the file using ClamAV
+  const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile);
+  if (isZipBomb) {
+    message.isInfected = true;
+    logger.warn(`File at ${message.payload.url} is a ZipBomb. ${errorCode}: ${errorMessage}`);
+    yield helper.postToBusAPI(message)
+    return message;
+  }
+
+  const isInfected = yield helper.scanWithClamAV(downloadedFile)
+  
+  // Update Scanning results
   message.payload.isInfected = isInfected
 
   yield helper.postToBusAPI(message)

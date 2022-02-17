@@ -13,6 +13,7 @@ const m2mAuth = require('tc-core-library-js').auth.m2m
 const m2m = m2mAuth(_.pick(config, ['AUTH0_URL', 'AUTH0_AUDIENCE', 'TOKEN_CACHE_TIME', 'AUTH0_PROXY_SERVER_URL']))
 const AWS = require('aws-sdk')
 const AmazonS3URI = require('amazon-s3-uri')
+const pure = require("@ronomon/pure");
 
 AWS.config.region = config.get('aws.REGION')
 const s3 = new AWS.S3()
@@ -39,11 +40,26 @@ function * downloadFile (fileURL) {
   }
 }
 
-function * scanWithClamAV (fileURL) {
-  // Download file from URL
-  const downloadedFile = yield downloadFile(fileURL)
+/**
+ * check if the file is a zipbomb
+ *
+ * @param {string} fileBuffer the file buffer
+ * @returns
+ */
+ function isZipBomb(fileBuffer) {
+  const error = pure.zip(fileBuffer, 0);
+
+  // we only care about zip bombs
+  if (error.code === "PURE_E_OK" || error.code.indexOf("ZIP_BOMB") === -1) {
+    return [false];
+  } else {
+    return [true, error.code, error.message];
+  }
+}
+
+function * scanWithClamAV (file) {
   // Scan
-  const fileStream = streamifier.createReadStream(downloadedFile)
+  const fileStream = streamifier.createReadStream(file)
   return new Promise((resolve, reject) => {
     clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
       if (scanErr) {
@@ -85,6 +101,7 @@ function * postToBusAPI (reqBody) {
 }
 
 module.exports = {
+  isZipBomb,
   scanWithClamAV,
   postToBusAPI
 }
