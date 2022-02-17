@@ -103,5 +103,6 @@ function * postToBusAPI (reqBody) {
 module.exports = {
   isZipBomb,
   scanWithClamAV,
-  postToBusAPI
+  postToBusAPI,
+  downloadFile
 }
