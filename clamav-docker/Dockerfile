@@ -6,15 +6,10 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-ENV TINI_VERSION v0.14.0
+ENV TINI_VERSION v0.19.0
 
 RUN set -x \
-    && curl -fSL "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-static" -o /usr/local/bin/tini \
-    && curl -fSL "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini-static.asc" -o /usr/local/bin/tini.asc \
-    && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys 6380DC428747F6C393FEACA59A84159D7001A4E5 \
-    && gpg --batch --verify /usr/local/bin/tini.asc /usr/local/bin/tini \
-    && rm -r "$GNUPGHOME" /usr/local/bin/tini.asc \
+    && curl -fSL "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini" -o /usr/local/bin/tini \
     && chmod +x /usr/local/bin/tini
 
 RUN mkdir /var/run/clamav && \

@@ -2,15 +2,15 @@ version: "3"
 services:
   clamav:
     container_name: clamav
-    image: clamav:latest
-    build:
-      context: ./clamav-docker
+    image: clamav/clamav
     environment:
       - MAX_SCAN_SIZE=500M
       - MAX_FILE_SIZE=500M
       - MAX_STREAM_LENGTH=500M
     hostname: clamav
-    restart: always 
+    restart: always
+    expose:
+      - 3310
     logging:
       driver: awslogs
       options: 
@@ -31,8 +31,6 @@ services:
     environment:
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
-    links:
-      - clamav
     depends_on:
       - clamav
     logging:
