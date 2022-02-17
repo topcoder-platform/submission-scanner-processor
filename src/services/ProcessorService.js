@@ -19,7 +19,7 @@ function * processScan (message) {
   // Scan the file using ClamAV
   const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile);
   if (isZipBomb) {
-    message.isInfected = true;
+    message.payload.isInfected = true;
     logger.warn(`File at ${message.payload.url} is a ZipBomb. ${errorCode}: ${errorMessage}`);
     yield helper.postToBusAPI(message)
     return message;
