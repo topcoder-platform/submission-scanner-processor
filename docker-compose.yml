@@ -1,22 +1,20 @@
 version: "3"
 services:
-  clamav:
+  scanner:
     container_name: clamav
     image: clamav/clamav
     environment:
       - MAX_SCAN_SIZE=500M
       - MAX_FILE_SIZE=500M
       - MAX_STREAM_LENGTH=500M
-    hostname: clamav
+    hostname: scanner
     restart: always
-    expose:
-      - 3310
     logging:
       driver: awslogs
       options: 
         awslogs-group: /aws/ecs/submission-scanner-processor-service
         awslogs-region: us-east-1
-        awslogs-stream-prefix: clam_server     
+        awslogs-stream-prefix: clam_server
   app:
     image: app:latest
     container_name: submission-scanner-processor
@@ -25,14 +23,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     ports:
-      - "0:3000"
+      - "3000:3000"
     links:
-      - clamav
+      - scanner
     environment:
-      - CLAMAV_HOST=clamav
+      - CLAMAV_HOST=scanner
       - CLAMAV_PORT=3310
     depends_on:
-      - clamav
+      - scanner
     logging:
       driver: awslogs
       options: 

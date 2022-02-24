@@ -1,11 +1,18 @@
-# Use the base image with Node.js 8.11.3
-FROM node:8.11.3
+FROM node:16.14.0-alpine
 
-# Copy the current directory into the Docker image
-COPY . /submission-scanner-processor
+RUN apk add g++ make python3
+
+RUN mkdir -p /submission-scanner-processor
 
 # Set working directory for future use
 WORKDIR /submission-scanner-processor
 
+# Copy the current directory into the Docker image
+COPY . .
+
+
+
 # Install the dependencies from package.json
 RUN npm install
+
+EXPOSE 3000
