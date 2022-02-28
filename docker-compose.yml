@@ -8,6 +8,10 @@ services:
       - MAX_FILE_SIZE=500M
       - MAX_STREAM_LENGTH=500M
     hostname: scanner
+    ports:
+      - 3310
+    expose:
+      - 3310
     restart: always
     logging:
       driver: awslogs
