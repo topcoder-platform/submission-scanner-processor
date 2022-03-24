@@ -3,7 +3,7 @@ task_definition:
   services:
     scanner:
       cpu_shares: 512
-      mem_limit: 2G
+      mem_limit: 4G
     app:
       cpu_shares: 128
       mem_limit: 512MB

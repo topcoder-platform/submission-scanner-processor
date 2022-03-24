@@ -2,9 +2,9 @@ version: "3"
 services:
   scanner:
     container_name: scanner
-    image: clamav/clamav
+    image: clamav/clamav:0.104
     environment:
-      - CLAMAV_NO_MILTERD=false
+      - CLAMAV_NO_MILTERD=true
       - MAX_SCAN_SIZE=500M
       - MAX_FILE_SIZE=500M
       - MAX_STREAM_LENGTH=500M
