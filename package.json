@@ -20,7 +20,7 @@
   "dependencies": {
     "@ronomon/pure": "^1.0.4",
     "amazon-s3-uri": "0.0.3",
-    "aws-sdk": "^2.300.0",
+    "aws-sdk": "^2.814.0",
     "axios": "^0.18.0",
     "bluebird": "^3.5.1",
     "clamav.js": "^0.12.0",
