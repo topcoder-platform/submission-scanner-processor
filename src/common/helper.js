@@ -79,6 +79,12 @@ function * scanWithClamAV (file) {
   yield new Promise((resolve, reject) => {
     clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
       if (scanErr) {
+        console.log('Scan Error', scanErr)
+        console.log('Object', object)
+        logger.info('PING...')
+        clamav.ping(config.CLAMAV_PORT, config.CLAMAV_HOST, 500, (err) => {
+          console.log('Ping error', err);
+        })
         reject(scanErr)
       }
       // Return True / False depending on Scan result
