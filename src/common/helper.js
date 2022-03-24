@@ -2,58 +2,78 @@
  * Contains generic helper methods
  */
 
-global.Promise = require('bluebird')
-const _ = require('lodash')
-const config = require('config')
-const clamav = require('clamav.js')
-const streamifier = require('streamifier')
-const logger = require('./logger')
-const request = require('axios')
-const m2mAuth = require('tc-core-library-js').auth.m2m
-const m2m = m2mAuth(_.pick(config, ['AUTH0_URL', 'AUTH0_AUDIENCE', 'TOKEN_CACHE_TIME', 'AUTH0_PROXY_SERVER_URL']))
-const AWS = require('aws-sdk')
-const AmazonS3URI = require('amazon-s3-uri')
+global.Promise = require("bluebird");
+const _ = require("lodash");
+const config = require("config");
+const clamav = require("clamav.js");
+const streamifier = require("streamifier");
+const logger = require("./logger");
+const request = require("axios");
+const m2mAuth = require("tc-core-library-js").auth.m2m;
+const m2m = m2mAuth(
+  _.pick(config, [
+    "AUTH0_URL",
+    "AUTH0_AUDIENCE",
+    "TOKEN_CACHE_TIME",
+    "AUTH0_PROXY_SERVER_URL",
+  ])
+);
+const AWS = require("aws-sdk");
+const AmazonS3URI = require("amazon-s3-uri");
 const pure = require("@ronomon/pure");
 
-AWS.config.region = config.get('aws.REGION')
-const s3 = new AWS.S3()
+Promise.promisifyAll(request);
+
+AWS.config.region = config.get("aws.REGION");
+const s3 = new AWS.S3();
 
 // Initialize ClamAV
-let clamavScanner = null
+let clamavScanner = null;
 const initClamAvScanner = () => {
   setTimeout(() => {
-    logger.info(`Checking ClamAV Status.`)
-    clamav.version(config.CLAMAV_PORT, config.CLAMAV_HOST, 500, (error, status) => {
-      if (error) {
-        logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`)
-        initClamAvScanner();
-      } else {
-        logger.info('ClamAV connection established')
-        clamavScanner = clamav.createScanner(config.CLAMAV_PORT, config.CLAMAV_HOST)
-        initClamAvScanner();
+    logger.info(`Checking ClamAV Status.`);
+    clamav.version(
+      config.CLAMAV_PORT,
+      config.CLAMAV_HOST,
+      500,
+      (error, status) => {
+        if (error) {
+          logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`);
+          initClamAvScanner();
+        } else {
+          logger.info("ClamAV connection established.", status);
+          clamavScanner = clamav.createScanner(
+            config.CLAMAV_PORT,
+            config.CLAMAV_HOST
+          );
+        }
       }
-    });
+    );
   }, 5000);
-}
+};
 
-initClamAvScanner()
+initClamAvScanner();
 
 /**
  * Function to download file from given URL
  * @param{String} fileURL URL of the file to be downloaded
  * @returns {Buffer} Buffer of downloaded file
  */
-function * downloadFile (fileURL) {
-  let downloadedFile
+async function downloadFile(fileURL) {
+  let downloadedFile;
   if (/.*amazonaws.*/.test(fileURL)) {
-    const { bucket, key } = AmazonS3URI(fileURL)
-    logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
-    downloadedFile = yield s3.getObject({ Bucket: bucket, Key: key }).promise()
-    return downloadedFile.Body
+    const { bucket, key } = AmazonS3URI(fileURL);
+    logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`);
+    downloadedFile = await s3.getObject({ Bucket: bucket, Key: key }).promise();
+    return downloadedFile.Body;
   } else {
-    logger.info(`downloadFile(): file is (hopefully) a public URL at ${fileURL}`)
-    downloadedFile = yield request.get(fileURL, { responseType: 'arraybuffer' })
-    return downloadedFile.data
+    logger.info(
+      `downloadFile(): file is (hopefully) a public URL at ${fileURL}`
+    );
+    downloadedFile = await request.get(fileURL, {
+      responseType: "arraybuffer",
+    });
+    return downloadedFile.data;
   }
 }
 
@@ -63,7 +83,7 @@ function * downloadFile (fileURL) {
  * @param {string} fileBuffer the file buffer
  * @returns
  */
- function isZipBomb(fileBuffer) {
+function isZipBomb(fileBuffer) {
   const error = pure.zip(fileBuffer, 0);
 
   // we only care about zip bombs
@@ -74,29 +94,47 @@ function * downloadFile (fileURL) {
   }
 }
 
-function * scanWithClamAV (file) {
+function scanWithClamAV(file) {
   // Scan
-  const fileStream = streamifier.createReadStream(file)
-  yield new Promise((resolve, reject) => {
-    clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
-      if (scanErr) {
-        reject(scanErr)
+  return new Promise((resolve, reject) => {
+    clamav.version(
+      config.CLAMAV_PORT,
+      config.CLAMAV_HOST,
+      500,
+      (error, status) => {
+        if (error) {
+          logger.error("Unable to communicate with ClamAV");
+          reject(error);
+        } else {
+          logger.info("ClamAV is up and running.", status);
+          const fileStream = streamifier.createReadStream(file);
+          clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
+            if (scanErr) {
+              logger.info("Scan Error");
+              reject(scanErr);
+            }
+            // Return True / False depending on Scan result
+            if (malicious == null) {
+              resolve(false);
+            } else {
+              logger.warn(`Infection detected ${malicious}`);
+              resolve(true);
+            }
+          });
+        }
       }
-      // Return True / False depending on Scan result
-      if (malicious) {
-        resolve(true)
-      } else {
-        resolve(false)
-      }
-    })
-  })
+    );
+  });
 }
 
 /* Function to get M2M token
  * @returns {Promise}
  */
-function * getM2Mtoken () {
-  return yield m2m.getMachineToken(config.AUTH0_CLIENT_ID, config.AUTH0_CLIENT_SECRET)
+async function getM2Mtoken() {
+  return m2m.getMachineToken(
+    config.AUTH0_CLIENT_ID,
+    config.AUTH0_CLIENT_SECRET
+  );
 }
 
 /**
@@ -104,22 +142,21 @@ function * getM2Mtoken () {
  * @param{Object} reqBody Body of the request to be Posted
  * @returns {Promise}
  */
-function * postToBusAPI (reqBody) {
+async function postToBusAPI(reqBody) {
   // M2M token necessary for pushing to Bus API
-  const token = yield getM2Mtoken()
-
-  Promise.promisifyAll(request)
-
+  const token = await getM2Mtoken();
   // Post the request body to Bus API
-  yield request
-    .post(config.BUSAPI_EVENTS_URL, reqBody,
-      { headers: { 'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json' }})
+  return request.post(config.BUSAPI_EVENTS_URL, reqBody, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
 }
 
 module.exports = {
   isZipBomb,
   scanWithClamAV,
   postToBusAPI,
-  downloadFile
-}
+  downloadFile,
+};

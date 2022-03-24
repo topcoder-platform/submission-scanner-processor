@@ -33,7 +33,7 @@
     "streamifier": "^0.1.1",
     "tc-core-library-js": "appirio-tech/tc-core-library-js.git#v2.6",
     "topcoder-healthcheck-dropin": "^1.0.2",
-    "winston": "^2.2.0"
+    "winston": "^3.3.3"
   },
   "engines": {
     "node": "8.x"
