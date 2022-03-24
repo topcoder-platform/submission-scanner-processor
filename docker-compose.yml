@@ -34,7 +34,7 @@ services:
       - CLAMAV_HOST=scanner
       - CLAMAV_PORT=3310
     depends_on:
-      - scannere
+      - scanner
     logging:
       driver: awslogs
       options: 
