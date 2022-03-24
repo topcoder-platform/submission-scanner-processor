@@ -1,7 +1,7 @@
 version: 1
 task_definition:
   services:
-    clamav:
+    scanner:
       cpu_shares: 256
       mem_limit: 2G  
     app:
