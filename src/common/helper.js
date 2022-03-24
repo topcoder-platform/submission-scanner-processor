@@ -19,7 +19,23 @@ AWS.config.region = config.get('aws.REGION')
 const s3 = new AWS.S3()
 
 // Initialize ClamAV
-const clamavScanner = clamav.createScanner(config.CLAMAV_PORT, config.CLAMAV_HOST)
+let clamavScanner = null
+const initClamAvScanner = () => {
+  setTimeout(() => {
+    logger.info(`Checking ClamAV Status.`)
+    clamav.version(config.CLAMAV_PORT, config.CLAMAV_HOST, 500, (error, status) => {
+      if (error) {
+        logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`)
+        initClamAvScanner();
+      } else {
+        console.log('Connecting to', status);
+        clamavScanner = clamav.createScanner(config.CLAMAV_PORT, config.CLAMAV_HOST)
+      }
+    });
+  }, 5000);
+}
+
+initClamAvScanner()
 
 /**
  * Function to download file from given URL
@@ -60,7 +76,7 @@ function * downloadFile (fileURL) {
 function * scanWithClamAV (file) {
   // Scan
   const fileStream = streamifier.createReadStream(file)
-  return new Promise((resolve, reject) => {
+  yield new Promise((resolve, reject) => {
     clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
       if (scanErr) {
         reject(scanErr)
