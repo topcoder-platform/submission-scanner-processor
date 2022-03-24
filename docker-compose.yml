@@ -9,7 +9,7 @@ services:
       - MAX_STREAM_LENGTH=500M
     hostname: scanner
     ports:
-      - 3310
+      - "3310:3310"
     expose:
       - 3310
     restart: always
@@ -34,7 +34,7 @@ services:
       - CLAMAV_HOST=scanner
       - CLAMAV_PORT=3310
     depends_on:
-      - scanner
+      - scannere
     logging:
       driver: awslogs
       options: 
