@@ -28,8 +28,9 @@ const initClamAvScanner = () => {
         logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`)
         initClamAvScanner();
       } else {
-        console.log('Connecting to', status);
+        logger.info('ClamAV connection established')
         clamavScanner = clamav.createScanner(config.CLAMAV_PORT, config.CLAMAV_HOST)
+        initClamAvScanner();
       }
     });
   }, 5000);
@@ -79,12 +80,6 @@ function * scanWithClamAV (file) {
   yield new Promise((resolve, reject) => {
     clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
       if (scanErr) {
-        console.log('Scan Error', scanErr)
-        console.log('Object', object)
-        logger.info('PING...')
-        clamav.ping(config.CLAMAV_PORT, config.CLAMAV_HOST, 500, (err) => {
-          console.log('Ping error', err);
-        })
         reject(scanErr)
       }
       // Return True / False depending on Scan result
