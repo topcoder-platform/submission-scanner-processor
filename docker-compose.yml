@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     ports:
-      - "3000:3000"
+      - "0:3000"
     links:
       - scanner
     environment:
