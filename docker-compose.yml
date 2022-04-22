@@ -5,9 +5,8 @@ services:
     image: clamav/clamav:0.104
     environment:
       - CLAMAV_NO_MILTERD=true
-      - MAX_SCAN_SIZE=500M
-      - MAX_FILE_SIZE=500M
-      - MAX_STREAM_LENGTH=500M
+      - MaxScanSize=500M
+      - MaxFileSize=500M
     hostname: scanner
     restart: always
     logging:
