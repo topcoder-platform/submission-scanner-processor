@@ -1,6 +1,6 @@
 version: "3"
 services:
-  clamav-service-processor:
+  clamav-scanner:
     build:
       context: ../
       dockerfile: docker-docker/Dockerfile
