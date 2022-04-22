@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-# ENV=$1
 CLUSTER=$1
+ENV=$2
 
-# ENV_CONFIG=`echo "$ENV" | tr '[:upper:]' '[:lower:]'`
+ENV_CONFIG=`echo "$ENV" | tr '[:upper:]' '[:lower:]'`
 
 # AWS_REGION=$(eval "echo \$${ENV}_AWS_REGION")
 # AWS_ACCESS_KEY_ID=$(eval "echo \$${ENV}_AWS_ACCESS_KEY_ID")
@@ -56,6 +56,13 @@ TAG=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$AWS_REPOSITORY:$CIRCLE_BU
 # 	aws configure set default.output json
 # 	echo "Configured AWS CLI."
 # }
+
+
+# login to docker
+
+DOCKER_USER=$(aws ssm get-parameter --name /$ENV_CONFIG/build/dockeruser --with-decryption --output text --query Parameter.Value)
+DOCKER_PASSWD=$(aws ssm get-parameter --name /$ENV_CONFIG/build/dockercfg --with-decryption --output text --query Parameter.Value)
+echo $DOCKER_PASSWD | docker login -u $DOCKER_USER --password-stdin
 
 # configure_aws_cli
 sed -i='' "s|app:latest|$TAG|" docker-compose.yml
