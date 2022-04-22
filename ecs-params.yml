@@ -6,4 +6,4 @@ task_definition:
       mem_limit: 12G
     app:
       cpu_shares: 200
-      mem_limit: 3585MB
+      mem_limit: 2560MB
