@@ -1,22 +1,21 @@
 version: "3"
 services:
   scanner:
-    container_name: scanner
-    image: clamav/clamav:0.104
+    container_name: scanner:latest
+    image: clamav-scanner
     environment:
       - CLAMAV_NO_MILTERD=true
-      - MaxScanSize=500M
-      - MaxFileSize=500M
     hostname: scanner
     restart: always
-    volumes:
-      - ./clamconf/clamd.conf:/etc/clamav/clamd.conf
-    # logging:
-    #   driver: awslogs
-    #   options:
-    #     awslogs-group: /aws/ecs/submission-scanner-processor-service
-    #     awslogs-region: us-east-1
-    #     awslogs-stream-prefix: clam_server
+    build:
+      context: .
+      dockerfile: clamav-docker/Dockerfile
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /aws/ecs/submission-scanner-processor-service
+        awslogs-region: us-east-1
+        awslogs-stream-prefix: clam_server
   app:
     image: app:latest
     container_name: submission-scanner-processor
@@ -33,12 +32,12 @@ services:
       - CLAMAV_PORT=3310
     depends_on:
       - scanner
-    # logging:
-    #   driver: awslogs
-    #   options:
-    #     awslogs-group: /aws/ecs/submission-scanner-processor-service
-    #     awslogs-region: us-east-1
-    #     awslogs-stream-prefix: submission_scanner
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /aws/ecs/submission-scanner-processor-service
+        awslogs-region: us-east-1
+        awslogs-stream-prefix: submission_scanner
     env_file:
       - api.env
     command: npm start
