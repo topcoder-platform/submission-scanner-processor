@@ -46,7 +46,7 @@ echo "TOKEN_CACHE_TIME=$TOKEN_CACHE_TIME" >>api.env
 #echo "AWS_REGION=$AWS_REGION" >>api.env
 
 TAG=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$AWS_REPOSITORY:$CIRCLE_BUILD_NUM
-# CLAMAVTAG=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$AWS_REPOSITORY_CLAMAV:$CIRCLE_BUILD_NUM
+CLAMAVTAG=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$AWS_REPOSITORY_CLAMAV:$CIRCLE_BUILD_NUM
 
 # configure_aws_cli() {
 # 	aws --version
@@ -66,11 +66,11 @@ echo $DOCKER_PASSWD | docker login -u $DOCKER_USER --password-stdin
 
 # configure_aws_cli
 sed -i='' "s|app:latest|$TAG|" docker-compose.yml
-# sed -i='' "s|clamav:latest|$CLAMAVTAG|" docker-compose.yml
+sed -i='' "s|scanner:latest|$CLAMAVTAG|" docker-compose.yml
 docker-compose build
 #docker tag app:latest $TAG
 eval $(aws ecr get-login --region $AWS_REGION --no-include-email)
-# docker push $CLAMAVTAG
+docker push $CLAMAVTAG
 docker push $TAG
 
 ecs-cli configure --region us-east-1 --cluster $CLUSTER
