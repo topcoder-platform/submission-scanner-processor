@@ -2,10 +2,10 @@
 FROM node:10.24.1
 
 # Copy the current directory into the Docker image
-COPY . /submission-scanner-processor
+COPY . /file-scanner-processor
 
 # Set working directory for future use
-WORKDIR /submission-scanner-processor
+WORKDIR /file-scanner-processor
 
 EXPOSE 3000
 

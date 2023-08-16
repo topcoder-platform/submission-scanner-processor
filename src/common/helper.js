@@ -26,6 +26,7 @@ Promise.promisifyAll(request);
 
 AWS.config.region = config.get("aws.REGION");
 const s3 = new AWS.S3();
+const s3p = Promise.promisifyAll(s3)
 
 // Initialize ClamAV
 let clamavScanner = null;
@@ -154,9 +155,23 @@ async function postToBusAPI(reqBody) {
   });
 }
 
+/**
+ * Move file from one AWS S3 bucket to another bucket.
+ * @param {String} sourceBucket the source bucket
+ * @param {String} sourceKey the source key
+ * @param {String} targetBucket the target bucket
+ * @param {String} targetKey the target key
+ */
+async function moveFile (sourceBucket, sourceKey, targetBucket, targetKey) {
+  await s3p.copyObjectAsync({ Bucket: targetBucket, CopySource: `/${sourceBucket}/${sourceKey}`, Key: targetKey })
+  await s3p.deleteObjectAsync({ Bucket: sourceBucket, Key: sourceKey })
+}
+
+
 module.exports = {
   isZipBomb,
   scanWithClamAV,
   postToBusAPI,
   downloadFile,
+  moveFile
 };

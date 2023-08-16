@@ -13,10 +13,14 @@ module.exports = {
   KAFKA_CLIENT_CERT_KEY: process.env.KAFKA_CLIENT_CERT_KEY ? process.env.KAFKA_CLIENT_CERT_KEY.replace(/\\n/g, '\n') : null,
 
   // Kafka group id
-  KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'submission-scanner-processor',
+  KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'file-scanner-processor',
+  KAFKA_ORIGINATOR: process.env.KAFKA_ORIGINATOR || 'file-scanner-processor',
 
   aws: {
-    REGION: process.env.AWS_REGION || 'us-east-1' // AWS Region to be used by the application
+    REGION: process.env.AWS_REGION || 'us-east-1', // AWS Region to be used by the application
+    DMZ_BUCKET: process.env.DMZ_BUCKET || '', // Bucket where the files are downloaded from
+    DEFAULT_CLEAN_BUCKET: process.env.DEFAULT_CLEAN_BUCKET || '', // Bucket where the clean files are moved to
+    DEFAULT_QUARANTINE_BUCKET: process.env.DEFAULT_QUARANTINE_BUCKET || '', // Bucket where the infected files are moved to
   },
 
   AVSCAN_TOPIC: process.env.AVSCAN_TOPIC || 'avscan.action.scan',
@@ -28,5 +32,7 @@ module.exports = {
   TOKEN_CACHE_TIME: process.env.TOKEN_CACHE_TIME,
   AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
-  AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL
+  AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
+
+  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : [],
 }
