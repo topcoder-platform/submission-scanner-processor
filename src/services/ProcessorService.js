@@ -11,6 +11,11 @@ async function handleResult(message) {
   // Move the file to the appropriate bucket
   if (message.payload.isInfected) {
     if (message.payload.quarantineDestinationBucket) {
+      // make sure the quarantine bucket is not in the whitelist
+      if (config.get('WHITELISTED_CLEAN_BUCKETS').includes(message.payload.quarantineDestinationBucket)) {
+        logger.warn(`File ${message.payload.fileName} is infected but the quarantine bucket is whitelisted. Chaning to default quarantine bucket`);
+        message.payload.quarantineDestinationBucket = config.get('aws.DEFAULT_QUARANTINE_BUCKET');
+      }
       await helper.moveFile(
         config.get('aws.DMZ_BUCKET'),
         message.payload.fileName,
@@ -45,7 +50,7 @@ async function handleResult(message) {
     await helper.postToBusAPI(message);
   }
   if (message.payload.callbackUrl) {
-    await helper.postToCallbackURL(_.omit(message.payload, ['callbackUrl', 'callbackTopic']));
+    await helper.postToCallbackURL(_.omit(message.payload, ['callbackUrl', 'callbackTopic', 'cleanDestinationBucket', 'quarantineDestinationBucket']));
   }
 }
 
