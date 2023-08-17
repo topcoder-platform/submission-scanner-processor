@@ -18,6 +18,7 @@
     "standard": "^11.0.1"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.391.0",
     "@ronomon/pure": "^1.0.4",
     "amazon-s3-uri": "0.0.3",
     "aws-sdk": "^2.300.0",
