@@ -5,7 +5,7 @@ services:
     container_name: clamav-scanner
     environment:
       - CLAMAV_NO_MILTERD=true
-    hostname: scanner
+    hostname: filescanner
     restart: always
     build:
       context: .
@@ -26,9 +26,9 @@ services:
     ports:
       - "0:3000"
     links:
-      - scanner
+      - filescanner
     environment:
-      - CLAMAV_HOST=scanner
+      - CLAMAV_HOST=filescanner
       - CLAMAV_PORT=3310
     depends_on:
       - scanner
