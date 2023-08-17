@@ -2,7 +2,6 @@
  * Contains generic helper methods
  */
 
-global.Promise = require("bluebird");
 const _ = require("lodash");
 const config = require("config");
 const clamav = require("clamav.js");
@@ -10,6 +9,7 @@ const streamifier = require("streamifier");
 const logger = require("./logger");
 const request = require("axios");
 const m2mAuth = require("tc-core-library-js").auth.m2m;
+const { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const m2m = m2mAuth(
   _.pick(config, [
     "AUTH0_URL",
@@ -18,13 +18,10 @@ const m2m = m2mAuth(
     "AUTH0_PROXY_SERVER_URL",
   ])
 );
-const AWS = require("aws-sdk");
 const AmazonS3URI = require("amazon-s3-uri");
 const pure = require("@ronomon/pure");
 
-AWS.config.region = config.get("aws.REGION");
-const s3 = new AWS.S3();
-const s3p = Promise.promisifyAll(s3)
+const s3 = new S3Client({ region: config.get('aws.REGION') })
 
 // Initialize ClamAV
 let clamavScanner = null;
@@ -63,7 +60,7 @@ async function downloadFile(fileURL) {
   if (/.*amazonaws.*/.test(fileURL)) {
     const { bucket, key } = AmazonS3URI(fileURL);
     logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`);
-    downloadedFile = await s3.getObject({ Bucket: bucket, Key: key }).promise();
+    downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
     return downloadedFile.Body;
   } else {
     logger.info(
@@ -161,8 +158,8 @@ async function postToBusAPI(reqBody) {
  * @param {String} targetKey the target key
  */
 async function moveFile (sourceBucket, sourceKey, targetBucket, targetKey) {
-  await s3p.copyObjectAsync({ Bucket: targetBucket, CopySource: `/${sourceBucket}/${sourceKey}`, Key: targetKey })
-  await s3p.deleteObjectAsync({ Bucket: sourceBucket, Key: sourceKey })
+  await s3.send(new CopyObjectCommand({ Bucket: targetBucket, CopySource: `/${sourceBucket}/${sourceKey}`, Key: targetKey }))
+  await s3.send(new DeleteObjectCommand({ Bucket: sourceBucket, Key: sourceKey }))
 }
 
 /**
