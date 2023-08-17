@@ -1,6 +1,6 @@
 version: "3"
 services:
-  scanner:
+  filescanner:
     image: scanner:latest
     container_name: clamav-scanner
     environment:
