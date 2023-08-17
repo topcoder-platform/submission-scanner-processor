@@ -22,8 +22,6 @@ const AWS = require("aws-sdk");
 const AmazonS3URI = require("amazon-s3-uri");
 const pure = require("@ronomon/pure");
 
-Promise.promisifyAll(request);
-
 AWS.config.region = config.get("aws.REGION");
 const s3 = new AWS.S3();
 const s3p = Promise.promisifyAll(s3)
