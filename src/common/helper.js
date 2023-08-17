@@ -167,11 +167,31 @@ async function moveFile (sourceBucket, sourceKey, targetBucket, targetKey) {
   await s3p.deleteObjectAsync({ Bucket: sourceBucket, Key: sourceKey })
 }
 
+/**
+ * Function to POST to Callback URL
+ * @param{Object} message Body of the request to be Posted
+ * @returns {Promise}
+ */
+async function postToCallbackURL (message) {
+  const token = await getM2Mtoken();
+  const reqBody = {
+    method: "POST",
+    url: message.callbackUrl,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    data: message,
+  };
+  return request(reqBody);
+}
+
 
 module.exports = {
   isZipBomb,
   scanWithClamAV,
   postToBusAPI,
   downloadFile,
-  moveFile
+  moveFile,
+  postToCallbackURL,
 };
