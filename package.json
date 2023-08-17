@@ -1,7 +1,7 @@
 {
-  "name": "submission-scanner-processor",
+  "name": "file-scanner-processor",
   "version": "1.0.0",
-  "description": "Topcoder Submission Scanner Processor",
+  "description": "Topcoder File Scanner Processor",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",

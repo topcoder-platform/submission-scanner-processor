@@ -32,7 +32,7 @@ jobs:
           command: |
             ./awsconfiguration.sh DEV
             source awsenvconf
-            ./buildenv.sh -e DEV -b dev-global-appvar,dev-submission-scanner-processor-buildvar
+            ./buildenv.sh -e DEV -b dev-global-appvar,dev-file-scanner-processor-buildvar
             source buildenvvar
             ./deploy.sh av-scanner-service DEV
   "build-prod":
@@ -48,7 +48,7 @@ jobs:
           command: |
             ./awsconfiguration.sh PROD
             source awsenvconf
-            ./buildenv.sh -e PROD -b prod-global-appvar,prod-submission-scanner-processor-buildvar
+            ./buildenv.sh -e PROD -b prod-global-appvar,prod-file-scanner-processor-buildvar
             source buildenvvar
             ./deploy.sh av-scanner-service PROD
 workflows:

@@ -1,4 +1,4 @@
-# Topcoder - Submission Scanner Processor
+# Topcoder - File Scanner Processor
 
 ## Dependencies
 
