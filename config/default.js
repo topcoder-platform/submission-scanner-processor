@@ -24,7 +24,7 @@ module.exports = {
   },
 
   AVSCAN_TOPIC: process.env.AVSCAN_TOPIC || 'avscan.action.scan',
-  CLAMAV_HOST: process.env.CLAMAV_HOST || 'localhost',
+  CLAMAV_HOST: process.env.CLAMAV_HOST || 'scanner',
   CLAMAV_PORT: process.env.CLAMAV_PORT || 3310,
   BUSAPI_EVENTS_URL: process.env.BUSAPI_EVENTS_URL || 'https://api.topcoder-dev.com/v5/bus/events',
   AUTH0_URL: process.env.AUTH0_URL, // Auth0 credentials for Submission scoring processor
