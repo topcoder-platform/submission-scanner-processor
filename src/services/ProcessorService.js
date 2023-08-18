@@ -1,32 +1,32 @@
 /**
  * Service for Scanning Submissions
  */
-const _ = require("lodash");
-const Joi = require("joi");
-const logger = require("../common/logger");
-const helper = require("../common/helper");
-const config = require("config");
+const _ = require('lodash')
+const Joi = require('joi')
+const logger = require('../common/logger')
+const helper = require('../common/helper')
+const config = require('config')
 
-async function handleResult(message) {
+async function handleResult (message) {
   // Move the file to the appropriate bucket
   if (message.payload.isInfected) {
     if (message.payload.quarantineDestinationBucket) {
       // make sure the quarantine bucket is not in the whitelist
       if (config.get('WHITELISTED_CLEAN_BUCKETS').includes(message.payload.quarantineDestinationBucket)) {
-        logger.warn(`File ${message.payload.fileName} is infected but the quarantine bucket is whitelisted. Chaning to default quarantine bucket`);
-        message.payload.quarantineDestinationBucket = config.get('aws.DEFAULT_QUARANTINE_BUCKET');
+        logger.warn(`File ${message.payload.fileName} is infected but the quarantine bucket is whitelisted. Chaning to default quarantine bucket`)
+        message.payload.quarantineDestinationBucket = config.get('aws.DEFAULT_QUARANTINE_BUCKET')
       }
       await helper.moveFile(
         config.get('aws.DMZ_BUCKET'),
         message.payload.fileName,
         message.payload.quarantineDestinationBucket,
         message.payload.fileName
-      );
+      )
       // Update the URL
-      message.payload.url = `https://s3.amazonaws.com/${message.payload.quarantineDestinationBucket}/${message.payload.fileName}`;
+      message.payload.url = `https://s3.amazonaws.com/${message.payload.quarantineDestinationBucket}/${message.payload.fileName}`
     } else {
       // throw error about missing quarantine bucket
-      throw new Error(`File ${message.payload.fileName} is infected but no quarantine bucket is configured`);
+      throw new Error(`File ${message.payload.fileName} is infected but no quarantine bucket is configured`)
     }
   } else {
     if (message.payload.cleanDestinationBucket) {
@@ -35,22 +35,22 @@ async function handleResult(message) {
         message.payload.fileName,
         message.payload.cleanDestinationBucket,
         message.payload.fileName
-      );
+      )
       // Update the URL
-      message.payload.url = `https://s3.amazonaws.com/${message.payload.cleanDestinationBucket}/${message.payload.fileName}`;
+      message.payload.url = `https://s3.amazonaws.com/${message.payload.cleanDestinationBucket}/${message.payload.fileName}`
     } else {
       // throw error about missing clean bucket
-      throw new Error(`File ${message.payload.fileName} is clean but no clean bucket is configured`);
+      throw new Error(`File ${message.payload.fileName} is clean but no clean bucket is configured`)
     }
   }
   // Notify the caller
   if (message.payload.callbackTopic) {
-    message.originator = config.get('KAFKA_ORIGINATOR');
-    message.topic = message.payload.callbackTopic;
-    await helper.postToBusAPI(message);
+    message.originator = config.get('KAFKA_ORIGINATOR')
+    message.topic = message.payload.callbackTopic
+    await helper.postToBusAPI(message)
   }
   if (message.payload.callbackUrl) {
-    await helper.postToCallbackURL(_.omit(message.payload, ['callbackUrl', 'callbackTopic', 'cleanDestinationBucket', 'quarantineDestinationBucket']));
+    await helper.postToCallbackURL(_.omit(message.payload, ['callbackUrl', 'callbackTopic', 'cleanDestinationBucket', 'quarantineDestinationBucket']))
   }
 }
 
@@ -58,27 +58,27 @@ async function handleResult(message) {
  * Process Scan request event
  * @param {Object} message the message
  */
-async function processScan(message) {
-  message.timestamp = new Date().toISOString();
-  message.payload.status = "scanned";
-  const downloadedFile = await helper.downloadFile(message.payload.url);
+async function processScan (message) {
+  message.timestamp = new Date().toISOString()
+  message.payload.status = 'scanned'
+  const downloadedFile = await helper.downloadFile(message.payload.url)
 
   // Check if the file is a ZipBomb
-  const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile);
+  const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile)
   if (isZipBomb) {
-    message.payload.isInfected = true;
+    message.payload.isInfected = true
     logger.warn(
       `File at ${message.payload.url} is a ZipBomb. ${errorCode}: ${errorMessage}`
-    );
-    return handleResult(message);
+    )
+    return handleResult(message)
   }
 
   // Scan the file using ClamAV
-  const isInfected = await helper.scanWithClamAV(downloadedFile);
+  const isInfected = await helper.scanWithClamAV(downloadedFile)
 
   // Update Scanning results
-  message.payload.isInfected = isInfected;
-  return handleResult(message);
+  message.payload.isInfected = isInfected
+  return handleResult(message)
 }
 
 processScan.schema = {
@@ -87,7 +87,7 @@ processScan.schema = {
       topic: Joi.string().required(),
       originator: Joi.string().required(),
       timestamp: Joi.date().required(),
-      "mime-type": Joi.string().required(),
+      'mime-type': Joi.string().required(),
       payload: Joi.object()
         .keys({
           url: Joi.string().required(),
@@ -95,17 +95,17 @@ processScan.schema = {
           quarantineDestinationBucket: Joi.string().default(config.get('aws.DEFAULT_QUARANTINE_BUCKET')),
           fileName: Joi.string().required(),
           callbackUrl: Joi.string(),
-          callbackTopic: Joi.string().default(config.get('AVSCAN_TOPIC')),
+          callbackTopic: Joi.string().default(config.get('AVSCAN_TOPIC'))
         })
         .unknown(true)
-        .required(),
+        .required()
     })
-    .required(),
-};
+    .required()
+}
 
 // Exports
 module.exports = {
-  processScan,
-};
+  processScan
+}
 
-logger.buildService(module.exports, "ProcessorService");
+logger.buildService(module.exports, 'ProcessorService')
