@@ -1,5 +1,5 @@
 # Use the base image with Node.js 8.11.3
-FROM node:10.24.1
+FROM node:18.12.1
 
 # Copy the current directory into the Docker image
 COPY . /file-scanner-processor
