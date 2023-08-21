@@ -61,6 +61,7 @@ async function downloadFile (fileURL) {
     const { bucket, key } = AmazonS3URI(fileURL)
     logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
     downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+    logger.info(`File downloaded from S3 ${bucket} / ${key}`)
     return downloadedFile.Body
   } else {
     logger.info(
@@ -69,6 +70,7 @@ async function downloadFile (fileURL) {
     downloadedFile = await request.get(fileURL, {
       responseType: 'arraybuffer'
     })
+    logger.info(`File downloaded from ${fileURL}`)
     return downloadedFile.data
   }
 }
@@ -80,6 +82,7 @@ async function downloadFile (fileURL) {
  * @returns
  */
 function isZipBomb (fileBuffer) {
+  logger.info('Checking if file is a ZipBomb')
   const error = pure.zip(fileBuffer, 0)
 
   // we only care about zip bombs
@@ -90,8 +93,8 @@ function isZipBomb (fileBuffer) {
   }
 }
 
-function scanWithClamAV (file) {
-  // Scan
+async function scanWithClamAV (file) {
+  logger.info('Scanning file with ClamAV')
   return new Promise((resolve, reject) => {
     clamav.version(
       config.CLAMAV_PORT,
@@ -109,7 +112,6 @@ function scanWithClamAV (file) {
               logger.info('Scan Error')
               reject(scanErr)
             }
-            // Return True / False depending on Scan result
             if (malicious == null) {
               resolve(false)
             } else {
