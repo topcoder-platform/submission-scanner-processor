@@ -5,52 +5,34 @@ const _ = require('lodash')
 const Joi = require('joi')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
+const { CALLBACK_OPTIONS, WEBHOOK_HTTP_METHODS, WEBHOOK_AUTH_METHODS } = require('../common/constants')
 const config = require('config')
 
 async function handleResult (message) {
-  // Move the file to the appropriate bucket
-  if (message.payload.isInfected) {
-    if (message.payload.quarantineDestinationBucket) {
-      // make sure the quarantine bucket is not in the whitelist
-      if (config.get('WHITELISTED_CLEAN_BUCKETS').includes(message.payload.quarantineDestinationBucket)) {
-        logger.warn(`File ${message.payload.fileName} is infected but the quarantine bucket is whitelisted. Chaning to default quarantine bucket`)
-        message.payload.quarantineDestinationBucket = config.get('aws.DEFAULT_QUARANTINE_BUCKET')
-      }
-      await helper.moveFile(
-        config.get('aws.DMZ_BUCKET'),
-        message.payload.fileName,
-        message.payload.quarantineDestinationBucket,
-        message.payload.fileName
-      )
-      // Update the URL
-      message.payload.url = `https://s3.amazonaws.com/${message.payload.quarantineDestinationBucket}/${message.payload.fileName}`
-    } else {
-      // throw error about missing quarantine bucket
-      throw new Error(`File ${message.payload.fileName} is infected but no quarantine bucket is configured`)
-    }
-  } else {
-    if (message.payload.cleanDestinationBucket) {
-      await helper.moveFile(
-        config.get('aws.DMZ_BUCKET'),
-        message.payload.fileName,
-        message.payload.cleanDestinationBucket,
-        message.payload.fileName
-      )
-      // Update the URL
-      message.payload.url = `https://s3.amazonaws.com/${message.payload.cleanDestinationBucket}/${message.payload.fileName}`
-    } else {
-      // throw error about missing clean bucket
-      throw new Error(`File ${message.payload.fileName} is clean but no clean bucket is configured`)
-    }
+  if (message.moveFile) {
+    // Move the file to the appropriate bucket
+    await helper.moveFile(
+      message.bucket,
+      message.key,
+      message.isInfected ? message.quarantineDestinationBucket : message.cleanDestinationBucket,
+      message.payload.fileName
+    )
   }
+
   // Notify the caller
-  if (message.payload.callbackTopic) {
-    message.originator = config.get('KAFKA_ORIGINATOR')
-    message.topic = message.payload.callbackTopic
-    await helper.postToBusAPI(message)
-  }
-  if (message.payload.callbackUrl) {
-    await helper.postToCallbackURL(_.omit(message.payload, ['callbackUrl', 'callbackTopic', 'cleanDestinationBucket', 'quarantineDestinationBucket']))
+  if (message.callbackOption !== CALLBACK_OPTIONS.NO_CALLBACK) {
+    const payload = _.omit(message, ['moveFile', 'cleanDestinationBucket', 'quarantineDestinationBucket', 'callbackOption', 'callbackHook', 'callbackKafkaTopic'])
+    if (message.callbackOption === CALLBACK_OPTIONS.KAFKA) {
+      await helper.postToBusAPI({
+        originator: config.get('KAFKA_ORIGINATOR'),
+        topic: message.callbackKafkaTopic,
+        timestamp: new Date().toISOString(),
+        'mime-type': 'application/json',
+        payload
+      })
+    } else if (message.callbackOption === CALLBACK_OPTIONS.WEBHOOK) {
+      await helper.postToCallbackURL(message.callbackHook, payload)
+    }
   }
 }
 
@@ -59,9 +41,11 @@ async function handleResult (message) {
  * @param {Object} message the message
  */
 async function processScan (message) {
-  message.timestamp = new Date().toISOString()
-  message.payload.status = 'scanned'
-  const downloadedFile = await helper.downloadFile(message.payload.url)
+  const { region, bucket, key } = helper.parseAndValidateUrl(message.payload.url)
+  if (region !== config.get('aws.REGION')) {
+    throw new Error(`region must be ${config.get('aws.REGION')}`)
+  }
+  const downloadedFile = await helper.downloadFile(bucket, key)
 
   // Check if the file is a ZipBomb
   const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile)
@@ -70,7 +54,7 @@ async function processScan (message) {
     logger.warn(
       `File at ${message.payload.url} is a ZipBomb. ${errorCode}: ${errorMessage}`
     )
-    return handleResult(message)
+    return handleResult({ ...message.payload, bucket, key })
   }
 
   // Scan the file using ClamAV
@@ -78,34 +62,60 @@ async function processScan (message) {
 
   // Update Scanning results
   message.payload.isInfected = isInfected
-  return handleResult(message)
+  return handleResult({ ...message.payload, bucket, key })
 }
 
-processScan.schema = {
-  message: Joi.object()
-    .keys({
-      topic: Joi.string().required(),
-      originator: Joi.string().required(),
-      timestamp: Joi.date().required(),
-      'mime-type': Joi.string().required(),
-      payload: Joi.object()
-        .keys({
-          url: Joi.string().required(),
-          cleanDestinationBucket: Joi.string().default(config.get('aws.DEFAULT_CLEAN_BUCKET')).valid(config.get('WHITELISTED_CLEAN_BUCKETS')),
-          quarantineDestinationBucket: Joi.string().default(config.get('aws.DEFAULT_QUARANTINE_BUCKET')),
-          fileName: Joi.string().required(),
-          callbackUrl: Joi.string(),
-          callbackTopic: Joi.string().default(config.get('AVSCAN_TOPIC'))
+processScan.schema = Joi.object({
+  message: Joi.object().keys({
+    topic: Joi.string().required(),
+    originator: Joi.string().required(),
+    timestamp: Joi.date().required(),
+    'mime-type': Joi.string().required(),
+    payload: Joi.object().keys({
+      url: Joi.string().uri().required(),
+      fileName: Joi.string().required(),
+      moveFile: Joi.bool().required(),
+      cleanDestinationBucket: Joi.when('moveFile',
+        {
+          is: true,
+          then: Joi.string().required().valid(config.get('WHITELISTED_CLEAN_BUCKETS')),
+          otherwise: Joi.forbidden()
+        }),
+      quarantineDestinationBucket: Joi.when('moveFile',
+        {
+          is: true,
+          then: Joi.string().required().valid(config.get('WHITELISTED_QUARANTINE_BUCKETS')),
+          otherwise: Joi.forbidden()
+        }),
+      callbackOption: Joi.string().required().valid(..._.values(CALLBACK_OPTIONS)).insensitive(),
+      callbackHook: Joi.when('callbackOption', {
+        is: CALLBACK_OPTIONS.WEBHOOK,
+        then: Joi.object().keys({
+          url: Joi.string().uri().required(),
+          method: Joi.string().required().valid(..._.values(WEBHOOK_HTTP_METHODS)).insensitive(),
+          auth: Joi.string().required().valid(..._.values(WEBHOOK_AUTH_METHODS)).insensitive(),
+          secret: Joi.when('auth',
+            {
+              not: WEBHOOK_AUTH_METHODS.NO_AUTH,
+              then: Joi.string().required(),
+              otherwise: Joi.forbidden()
+            })
+        }).required(),
+        otherwise: Joi.forbidden()
+      }),
+      callbackKafkaTopic: Joi.when('callbackOption',
+        {
+          is: CALLBACK_OPTIONS.KAFKA,
+          then: Joi.string().required().valid(config.get('WHITELISTED_KAFKA_TOPICS')),
+          otherwise: Joi.forbidden()
         })
-        .unknown(true)
-        .required()
-    })
-    .required()
-}
+    }).unknown(true).required()
+  }).required()
+}).required()
 
 // Exports
 module.exports = {
   processScan
 }
 
-logger.buildService(module.exports, 'ProcessorService')
+logger.buildService(module.exports)

@@ -5,36 +5,38 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "lint": "standard",
-    "lint:fix": "standard --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "mocha test/*.test.js --exit",
     "cov": "nyc --reporter=html --reporter=text mocha test/*.test.js --exit"
   },
   "devDependencies": {
     "chai": "^4.1.2",
     "chai-http": "^4.0.0",
+    "eslint": "^8.0.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
+    "eslint-plugin-promise": "^6.0.0",
     "mocha": "^5.2.0",
-    "nyc": "^12.0.2",
-    "standard": "^11.0.1"
+    "nyc": "^12.0.2"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.391.0",
     "@ronomon/pure": "^1.0.4",
-    "amazon-s3-uri": "0.0.3",
-    "aws-sdk": "^2.300.0",
+    "amazon-s3-uri": "^0.1.1",
     "axios": "^1.4.0",
-    "bluebird": "^3.5.1",
+    "bluebird": "^3.7.2",
     "clamav.js": "^0.12.0",
-    "co": "^4.6.0",
-    "config": "^1.21.0",
+    "config": "^3.3.9",
     "get-parameter-names": "^0.3.0",
-    "joi": "^9.0.4",
-    "lodash": "^4.17.10",
-    "no-kafka": "^3.2.4",
+    "joi": "^17.9.2",
+    "lodash": "^4.17.21",
+    "no-kafka": "^3.4.3",
     "streamifier": "^0.1.1",
     "tc-core-library-js": "appirio-tech/tc-core-library-js.git#v2.6",
     "topcoder-healthcheck-dropin": "^1.0.2",
-    "winston": "^3.3.3"
+    "winston": "^3.10.0"
   },
   "engines": {
     "node": "18.x"
@@ -43,5 +45,9 @@
     "env": [
       "mocha"
     ]
+  },
+  "volta": {
+    "node": "18.16.1",
+    "yarn": "1.22.19"
   }
 }

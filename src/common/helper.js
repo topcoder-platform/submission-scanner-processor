@@ -7,7 +7,7 @@ const config = require('config')
 const clamav = require('clamav.js')
 const streamifier = require('streamifier')
 const logger = require('./logger')
-const request = require('axios')
+const request = require('axios').default
 const m2mAuth = require('tc-core-library-js').auth.m2m
 const { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const m2m = m2mAuth(
@@ -20,6 +20,7 @@ const m2m = m2mAuth(
 )
 const AmazonS3URI = require('amazon-s3-uri')
 const pure = require('@ronomon/pure')
+const { WEBHOOK_AUTH_METHODS } = require('./constants')
 
 const s3 = new S3Client({ region: config.get('aws.REGION') })
 
@@ -27,7 +28,7 @@ const s3 = new S3Client({ region: config.get('aws.REGION') })
 let clamavScanner = null
 const initClamAvScanner = () => {
   setTimeout(() => {
-    logger.info(`Checking ClamAV Status.`)
+    logger.info('Checking ClamAV Status.')
     clamav.version(
       config.CLAMAV_PORT,
       config.CLAMAV_HOST,
@@ -52,26 +53,22 @@ initClamAvScanner()
 
 /**
  * Function to download file from given URL
- * @param{String} fileURL URL of the file to be downloaded
+ * @param {String} bucket Bucket of the file to be downloaded
+ * @param {String} key Key of the file to be downloaded
  * @returns {Buffer} Buffer of downloaded file
  */
-async function downloadFile (fileURL) {
-  let downloadedFile
-  if (/.*amazonaws.*/.test(fileURL)) {
-    const { bucket, key } = AmazonS3URI(fileURL)
-    logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
-    downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
-    logger.info(`File downloaded from S3 ${bucket} / ${key}`)
-    return downloadedFile.Body
-  } else {
-    logger.info(
-      `downloadFile(): file is (hopefully) a public URL at ${fileURL}`
-    )
-    downloadedFile = await request.get(fileURL, {
-      responseType: 'arraybuffer'
-    })
-    logger.info(`File downloaded from ${fileURL}`)
-    return downloadedFile.data
+async function downloadFile (bucket, key) {
+  logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
+  const downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+  return Buffer.concat(await downloadedFile.Body.toArray())
+}
+
+function parseAndValidateUrl (fileUrl) {
+  try {
+    const { region, bucket, key } = new AmazonS3URI(fileUrl)
+    return { region, bucket, key }
+  } catch (err) {
+    throw new Error(`${fileUrl} is not a valid S3 uri`)
   }
 }
 
@@ -169,16 +166,22 @@ async function moveFile (sourceBucket, sourceKey, targetBucket, targetKey) {
  * @param{Object} message Body of the request to be Posted
  * @returns {Promise}
  */
-async function postToCallbackURL (message) {
-  const token = await getM2Mtoken()
+async function postToCallbackURL (webHookOptions, data) {
+  const { url, method, auth, secret } = webHookOptions
   const reqBody = {
-    method: 'POST',
-    url: message.callbackUrl,
+    method,
+    url,
     headers: {
-      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    data: message
+    data
+  }
+  if (auth === WEBHOOK_AUTH_METHODS.BEARER) {
+    reqBody.headers.Authorization = `Bearer ${secret}`
+  } else if (auth === WEBHOOK_AUTH_METHODS.BASIC) {
+    reqBody.headers.Authorization = `Basic ${secret}`
+  } else if (auth === WEBHOOK_AUTH_METHODS.API_KEY) {
+    reqBody.headers['X-API-Key'] = secret
   }
   return request(reqBody)
 }
@@ -188,6 +191,7 @@ module.exports = {
   scanWithClamAV,
   postToBusAPI,
   downloadFile,
+  parseAndValidateUrl,
   moveFile,
   postToCallbackURL
 }

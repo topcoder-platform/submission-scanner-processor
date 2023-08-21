@@ -17,10 +17,7 @@ module.exports = {
   KAFKA_ORIGINATOR: process.env.KAFKA_ORIGINATOR || 'file-scanner-processor',
 
   aws: {
-    REGION: process.env.AWS_REGION || 'us-east-1', // AWS Region to be used by the application
-    DMZ_BUCKET: process.env.DMZ_BUCKET || '', // Bucket where the files are downloaded from
-    DEFAULT_CLEAN_BUCKET: process.env.DEFAULT_CLEAN_BUCKET || 'topcoder-dev-submissions-quarantine', // Bucket where the clean files are moved to
-    DEFAULT_QUARANTINE_BUCKET: process.env.DEFAULT_QUARANTINE_BUCKET || 'topcoder-dev-submissions' // Bucket where the infected files are moved to
+    REGION: process.env.AWS_REGION || 'us-east-1' // AWS Region to be used by the application
   },
 
   AVSCAN_TOPIC: process.env.AVSCAN_TOPIC || 'avscan.action.scan',
@@ -34,5 +31,7 @@ module.exports = {
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
-  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions']
+  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions'],
+  WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : ['topcoder-dev-submissions-quarantine'],
+  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete']
 }
