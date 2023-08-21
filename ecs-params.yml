@@ -1,5 +1,6 @@
 version: 1
 task_definition:
+  task_role_arn: ${FILE_SCANNER_ROLE}
   services:
     scanner:
       cpu_shares: 696
