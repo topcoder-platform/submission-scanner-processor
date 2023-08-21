@@ -7,7 +7,7 @@ const config = require('config')
 const clamav = require('clamav.js')
 const streamifier = require('streamifier')
 const logger = require('./logger')
-const request = require('axios')
+const request = require('axios').default
 const m2mAuth = require('tc-core-library-js').auth.m2m
 const { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const m2m = m2mAuth(
@@ -62,7 +62,7 @@ async function downloadFile (fileURL) {
     logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
     downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
     logger.info(`File downloaded from S3 ${bucket} / ${key}`)
-    return downloadedFile.Body
+    return Buffer.concat(await downloadedFile.Body.toArray())
   } else {
     logger.info(
       `downloadFile(): file is (hopefully) a public URL at ${fileURL}`
