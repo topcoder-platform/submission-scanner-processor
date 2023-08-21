@@ -1,7 +1,7 @@
 /**
  * The application entry point
  */
-
+global.Promise = require('bluebird')
 const config = require('config')
 const logger = require('./common/logger')
 const Kafka = require('no-kafka')
