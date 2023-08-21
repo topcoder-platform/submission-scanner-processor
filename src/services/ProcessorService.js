@@ -8,15 +8,17 @@ const helper = require('../common/helper')
 const { CALLBACK_OPTIONS, WEBHOOK_HTTP_METHODS, WEBHOOK_AUTH_METHODS } = require('../common/constants')
 const config = require('config')
 
-async function handleResult (message) {
+async function handleResult (message, bucket, key) {
   if (message.moveFile) {
     // Move the file to the appropriate bucket
+    const newBucket = message.isInfected ? message.quarantineDestinationBucket : message.cleanDestinationBucket
     await helper.moveFile(
-      message.bucket,
-      message.key,
-      message.isInfected ? message.quarantineDestinationBucket : message.cleanDestinationBucket,
-      message.payload.fileName
+      bucket,
+      key,
+      newBucket,
+      message.fileName
     )
+    message.url = `https://s3.amazonaws.com/${newBucket}/${message.fileName}`
   }
 
   // Notify the caller
