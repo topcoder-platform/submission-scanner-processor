@@ -37,6 +37,7 @@ const dataHandler = (messageSet, topic, partition) =>
       logger.error('Invalid message JSON.')
       logger.error(e)
       // ignore the message
+      await consumer.commitOffset({ topic, partition, offset: m.offset })
       return
     }
     // Check if the topic in the payload is same as the Kafka topic
@@ -45,29 +46,17 @@ const dataHandler = (messageSet, topic, partition) =>
         `The message topic ${messageJSON.topic} doesn't match the Kafka topic ${topic}.`
       )
       // ignore the message
-      return
-    }
-
-    // Process only messages with unscanned status
-    if (
-      messageJSON.topic === config.AVSCAN_TOPIC &&
-      messageJSON.payload.status !== 'unscanned'
-    ) {
-      logger.debug(
-        `Ignoring message in topic ${messageJSON.topic} with status ${messageJSON.payload.status}`
-      )
-      // ignore the message
+      await consumer.commitOffset({ topic, partition, offset: m.offset })
       return
     }
 
     try {
       await ProcessorService.processScan(messageJSON)
-      consumer.commitOffset({ topic, partition, offset: m.offset })
+      await consumer.commitOffset({ topic, partition, offset: m.offset })
     } catch (err) {
       logger.error(err)
-
-      // commit offset regardless of errors
-      consumer.commitOffset({ topic, partition, offset: m.offset })
+    } finally {
+      await consumer.commitOffset({ topic, partition, offset: m.offset })
     }
   })
 
@@ -83,19 +72,19 @@ function check () {
   }
   let connected = true
   consumer.client.initialBrokers.forEach((conn) => {
-    logger.debug(`url ${conn.server()} - connected=${conn.connected}`)
+    if (!conn.connected) {
+      logger.error(`url ${conn.server()} - connected=${conn.connected}`)
+    }
     connected = conn.connected & connected
   })
   return connected
 }
 
 consumer
-  .init([
-    {
-      subscriptions: topics,
-      handler: dataHandler
-    }
-  ])
+  .init([{
+    subscriptions: topics,
+    handler: dataHandler
+  }])
   // consume configured topics
   .then(() => {
     logger.info('Initialized.......')
@@ -103,4 +92,4 @@ consumer
     logger.info('Adding topics successfully.......')
     logger.info(topics)
     logger.info('Kick Start.......')
-  })
+  }).catch(logger.logFullError)
