@@ -58,7 +58,7 @@ const _combineObject = (params, arr) => {
  * @param {Object} service the service
  */
 logger.decorateWithLogging = (service) => {
-  if (logger.config.LOG_LEVEL !== 'debug') {
+  if (config.LOG_LEVEL !== 'debug') {
     return
   }
   _.each(service, (method, name) => {
