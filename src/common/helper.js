@@ -157,7 +157,7 @@ async function postToBusAPI (reqBody) {
  * @param {String} targetKey the target key
  */
 async function moveFile (sourceBucket, sourceKey, targetBucket, targetKey) {
-  await s3.send(new CopyObjectCommand({ Bucket: targetBucket, CopySource: `/${sourceBucket}/${sourceKey}`, Key: targetKey }))
+  await s3.send(new CopyObjectCommand({ Bucket: targetBucket, CopySource: `${sourceBucket}/${sourceKey}`, Key: targetKey }))
   await s3.send(new DeleteObjectCommand({ Bucket: sourceBucket, Key: sourceKey }))
 }
 
