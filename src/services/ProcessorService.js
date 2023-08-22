@@ -80,13 +80,13 @@ processScan.schema = Joi.object({
       cleanDestinationBucket: Joi.when('moveFile',
         {
           is: true,
-          then: Joi.string().required().valid(config.get('WHITELISTED_CLEAN_BUCKETS')),
+          then: Joi.string().required().valid(...config.get('WHITELISTED_CLEAN_BUCKETS')),
           otherwise: Joi.forbidden()
         }),
       quarantineDestinationBucket: Joi.when('moveFile',
         {
           is: true,
-          then: Joi.string().required().valid(config.get('WHITELISTED_QUARANTINE_BUCKETS')),
+          then: Joi.string().required().valid(...config.get('WHITELISTED_QUARANTINE_BUCKETS')),
           otherwise: Joi.forbidden()
         }),
       callbackOption: Joi.string().required().valid(..._.values(CALLBACK_OPTIONS)).insensitive(),
@@ -108,7 +108,7 @@ processScan.schema = Joi.object({
       callbackKafkaTopic: Joi.when('callbackOption',
         {
           is: CALLBACK_OPTIONS.KAFKA,
-          then: Joi.string().required().valid(config.get('WHITELISTED_KAFKA_TOPICS')),
+          then: Joi.string().required().valid(...config.get('WHITELISTED_KAFKA_TOPICS')),
           otherwise: Joi.forbidden()
         })
     }).unknown(true).required()
