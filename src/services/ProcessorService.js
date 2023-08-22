@@ -56,7 +56,7 @@ async function processScan (message) {
     logger.warn(
       `File at ${message.payload.url} is a ZipBomb. ${errorCode}: ${errorMessage}`
     )
-    return handleResult({ ...message.payload, bucket, key })
+    return handleResult({ ...message.payload }, bucket, key)
   }
 
   // Scan the file using ClamAV
@@ -64,7 +64,7 @@ async function processScan (message) {
 
   // Update Scanning results
   message.payload.isInfected = isInfected
-  return handleResult({ ...message.payload, bucket, key })
+  return handleResult({ ...message.payload }, bucket, key)
 }
 
 processScan.schema = Joi.object({
