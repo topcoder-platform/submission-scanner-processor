@@ -110,6 +110,7 @@ async function scanWithClamAV (file) {
               reject(scanErr)
             }
             if (malicious == null) {
+              logger.info('File is clean')
               resolve(false)
             } else {
               logger.warn(`Infection detected ${malicious}`)
