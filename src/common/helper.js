@@ -109,7 +109,6 @@ async function scanWithClamAV (file) {
               logger.info('Scan Error')
               reject(scanErr)
             }
-            logger.info(`Scan result: ${JSON.stringify(object)} - ${malicious}`)
             if (malicious == null) {
               logger.info('File is clean')
               resolve(false)
