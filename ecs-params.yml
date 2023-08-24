@@ -1,5 +1,6 @@
 version: 1
 task_definition:
+  task_role_arn: ${FILE_SCANNER_ROLE}
   services:
     scanner:
       cpu_shares: 696
@@ -7,3 +8,6 @@ task_definition:
     app:
       cpu_shares: 200
       mem_limit: 2560MB
+    filescanner:
+      cpu_shares: 696
+      mem_limit: 12G

@@ -1,11 +1,11 @@
 version: "3"
 services:
-  scanner:
+  filescanner:
     image: scanner:latest
     container_name: clamav-scanner
     environment:
       - CLAMAV_NO_MILTERD=true
-    hostname: scanner
+    hostname: filescanner
     restart: always
     build:
       context: .
@@ -13,12 +13,12 @@ services:
     logging:
       driver: awslogs
       options:
-        awslogs-group: /aws/ecs/submission-scanner-processor-service
+        awslogs-group: /aws/ecs/file-scanner-processor-service
         awslogs-region: us-east-1
         awslogs-stream-prefix: clam_server
   app:
     image: app:latest
-    container_name: submission-scanner-processor
+    container_name: file-scanner-processor
     restart: always
     build:
       context: .
@@ -26,18 +26,18 @@ services:
     ports:
       - "0:3000"
     links:
-      - scanner
+      - filescanner
     environment:
-      - CLAMAV_HOST=scanner
+      - CLAMAV_HOST=filescanner
       - CLAMAV_PORT=3310
     depends_on:
-      - scanner
+      - filescanner
     logging:
       driver: awslogs
       options:
-        awslogs-group: /aws/ecs/submission-scanner-processor-service
+        awslogs-group: /aws/ecs/file-scanner-processor-service
         awslogs-region: us-east-1
-        awslogs-stream-prefix: submission_scanner
+        awslogs-stream-prefix: file_scanner
     env_file:
       - api.env
-    command: npm start
+    command: node src/app.js
