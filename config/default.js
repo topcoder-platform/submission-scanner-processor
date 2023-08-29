@@ -13,14 +13,15 @@ module.exports = {
   KAFKA_CLIENT_CERT_KEY: process.env.KAFKA_CLIENT_CERT_KEY ? process.env.KAFKA_CLIENT_CERT_KEY.replace(/\\n/g, '\n') : null,
 
   // Kafka group id
-  KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'submission-scanner-processor',
+  KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'file-scanner-processor',
+  KAFKA_ORIGINATOR: process.env.KAFKA_ORIGINATOR || 'file-scanner-processor',
 
   aws: {
     REGION: process.env.AWS_REGION || 'us-east-1' // AWS Region to be used by the application
   },
 
   AVSCAN_TOPIC: process.env.AVSCAN_TOPIC || 'avscan.action.scan',
-  CLAMAV_HOST: process.env.CLAMAV_HOST || 'localhost',
+  CLAMAV_HOST: process.env.CLAMAV_HOST || 'filescanner',
   CLAMAV_PORT: process.env.CLAMAV_PORT || 3310,
   BUSAPI_EVENTS_URL: process.env.BUSAPI_EVENTS_URL || 'https://api.topcoder-dev.com/v5/bus/events',
   AUTH0_URL: process.env.AUTH0_URL, // Auth0 credentials for Submission scoring processor
@@ -28,5 +29,9 @@ module.exports = {
   TOKEN_CACHE_TIME: process.env.TOKEN_CACHE_TIME,
   AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
-  AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL
+  AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
+
+  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions', 'topcoder-submissions'],
+  WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : ['topcoder-dev-submissions-quarantine', 'topcoder-submissions-quarantine'],
+  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete']
 }

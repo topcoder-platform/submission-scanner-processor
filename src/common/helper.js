@@ -2,78 +2,73 @@
  * Contains generic helper methods
  */
 
-global.Promise = require("bluebird");
-const _ = require("lodash");
-const config = require("config");
-const clamav = require("clamav.js");
-const streamifier = require("streamifier");
-const logger = require("./logger");
-const request = require("axios");
-const m2mAuth = require("tc-core-library-js").auth.m2m;
+const _ = require('lodash')
+const config = require('config')
+const clamav = require('clamav.js')
+const streamifier = require('streamifier')
+const logger = require('./logger')
+const request = require('axios').default
+const m2mAuth = require('tc-core-library-js').auth.m2m
+const { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const m2m = m2mAuth(
   _.pick(config, [
-    "AUTH0_URL",
-    "AUTH0_AUDIENCE",
-    "TOKEN_CACHE_TIME",
-    "AUTH0_PROXY_SERVER_URL",
+    'AUTH0_URL',
+    'AUTH0_AUDIENCE',
+    'TOKEN_CACHE_TIME',
+    'AUTH0_PROXY_SERVER_URL'
   ])
-);
-const AWS = require("aws-sdk");
-const AmazonS3URI = require("amazon-s3-uri");
-const pure = require("@ronomon/pure");
+)
+const AmazonS3URI = require('amazon-s3-uri')
+const pure = require('@ronomon/pure')
+const { WEBHOOK_AUTH_METHODS } = require('./constants')
 
-Promise.promisifyAll(request);
-
-AWS.config.region = config.get("aws.REGION");
-const s3 = new AWS.S3();
+const s3 = new S3Client({ region: config.get('aws.REGION') })
 
 // Initialize ClamAV
-let clamavScanner = null;
+let clamavScanner = null
 const initClamAvScanner = () => {
   setTimeout(() => {
-    logger.info(`Checking ClamAV Status.`);
+    logger.info('Checking ClamAV Status.')
     clamav.version(
       config.CLAMAV_PORT,
       config.CLAMAV_HOST,
       500,
       (error, status) => {
         if (error) {
-          logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`);
-          initClamAvScanner();
+          logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`)
+          initClamAvScanner()
         } else {
-          logger.info("ClamAV connection established.", status);
+          logger.info('ClamAV connection established.', status)
           clamavScanner = clamav.createScanner(
             config.CLAMAV_PORT,
             config.CLAMAV_HOST
-          );
+          )
         }
       }
-    );
-  }, 5000);
-};
+    )
+  }, 5000)
+}
 
-initClamAvScanner();
+initClamAvScanner()
 
 /**
  * Function to download file from given URL
- * @param{String} fileURL URL of the file to be downloaded
+ * @param {String} bucket Bucket of the file to be downloaded
+ * @param {String} key Key of the file to be downloaded
  * @returns {Buffer} Buffer of downloaded file
  */
-async function downloadFile(fileURL) {
-  let downloadedFile;
-  if (/.*amazonaws.*/.test(fileURL)) {
-    const { bucket, key } = AmazonS3URI(fileURL);
-    logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`);
-    downloadedFile = await s3.getObject({ Bucket: bucket, Key: key }).promise();
-    return downloadedFile.Body;
-  } else {
-    logger.info(
-      `downloadFile(): file is (hopefully) a public URL at ${fileURL}`
-    );
-    downloadedFile = await request.get(fileURL, {
-      responseType: "arraybuffer",
-    });
-    return downloadedFile.data;
+async function downloadFile (bucket, key) {
+  logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
+  const downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+  return Buffer.concat(await downloadedFile.Body.toArray())
+}
+
+function parseAndValidateUrl (fileUrl) {
+  try {
+    const { region, bucket, key } = new AmazonS3URI(fileUrl)
+    return { region, bucket, key }
+  } catch (err) {
+    throw new Error(`${fileUrl} is not a valid S3 uri`)
   }
 }
 
@@ -83,19 +78,20 @@ async function downloadFile(fileURL) {
  * @param {string} fileBuffer the file buffer
  * @returns
  */
-function isZipBomb(fileBuffer) {
-  const error = pure.zip(fileBuffer, 0);
+function isZipBomb (fileBuffer) {
+  logger.info('Checking if file is a ZipBomb')
+  const error = pure.zip(fileBuffer, 0)
 
   // we only care about zip bombs
-  if (error.code === "PURE_E_OK" || error.code.indexOf("ZIP_BOMB") === -1) {
-    return [false];
+  if (error.code === 'PURE_E_OK' || error.code.indexOf('ZIP_BOMB') === -1) {
+    return [false]
   } else {
-    return [true, error.code, error.message];
+    return [true, error.code, error.message]
   }
 }
 
-function scanWithClamAV(file) {
-  // Scan
+async function scanWithClamAV (file) {
+  logger.info('Scanning file with ClamAV')
   return new Promise((resolve, reject) => {
     clamav.version(
       config.CLAMAV_PORT,
@@ -103,38 +99,38 @@ function scanWithClamAV(file) {
       500,
       (error, status) => {
         if (error) {
-          logger.error("Unable to communicate with ClamAV");
-          reject(error);
+          logger.error('Unable to communicate with ClamAV')
+          reject(error)
         } else {
-          logger.info("ClamAV is up and running.", status);
-          const fileStream = streamifier.createReadStream(file);
+          logger.info('ClamAV is up and running.', status)
+          const fileStream = streamifier.createReadStream(file)
           clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
             if (scanErr) {
-              logger.info("Scan Error");
-              reject(scanErr);
+              logger.info('Scan Error')
+              reject(scanErr)
             }
-            // Return True / False depending on Scan result
             if (malicious == null) {
-              resolve(false);
+              logger.info('File is clean')
+              resolve(false)
             } else {
-              logger.warn(`Infection detected ${malicious}`);
-              resolve(true);
+              logger.warn(`Infection detected ${malicious}`)
+              resolve(true)
             }
-          });
+          })
         }
       }
-    );
-  });
+    )
+  })
 }
 
 /* Function to get M2M token
  * @returns {Promise}
  */
-async function getM2Mtoken() {
+async function getM2Mtoken () {
   return m2m.getMachineToken(
     config.AUTH0_CLIENT_ID,
     config.AUTH0_CLIENT_SECRET
-  );
+  )
 }
 
 /**
@@ -142,16 +138,53 @@ async function getM2Mtoken() {
  * @param{Object} reqBody Body of the request to be Posted
  * @returns {Promise}
  */
-async function postToBusAPI(reqBody) {
+async function postToBusAPI (reqBody) {
   // M2M token necessary for pushing to Bus API
-  const token = await getM2Mtoken();
+  const token = await getM2Mtoken()
   // Post the request body to Bus API
   return request.post(config.BUSAPI_EVENTS_URL, reqBody, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json'
+    }
+  })
+}
+
+/**
+ * Move file from one AWS S3 bucket to another bucket.
+ * @param {String} sourceBucket the source bucket
+ * @param {String} sourceKey the source key
+ * @param {String} targetBucket the target bucket
+ * @param {String} targetKey the target key
+ */
+async function moveFile (sourceBucket, sourceKey, targetBucket, targetKey) {
+  await s3.send(new CopyObjectCommand({ Bucket: targetBucket, CopySource: `${sourceBucket}/${sourceKey}`, Key: targetKey }))
+  await s3.send(new DeleteObjectCommand({ Bucket: sourceBucket, Key: sourceKey }))
+}
+
+/**
+ * Function to POST to Callback URL
+ * @param{Object} message Body of the request to be Posted
+ * @returns {Promise}
+ */
+async function postToCallbackURL (webHookOptions, data) {
+  const { url, method, auth, secret } = webHookOptions
+  const reqBody = {
+    method,
+    url,
+    headers: {
+      'Content-Type': 'application/json'
     },
-  });
+    data
+  }
+  if (auth === WEBHOOK_AUTH_METHODS.BEARER) {
+    reqBody.headers.Authorization = `Bearer ${secret}`
+  } else if (auth === WEBHOOK_AUTH_METHODS.BASIC) {
+    reqBody.headers.Authorization = `Basic ${secret}`
+  } else if (auth === WEBHOOK_AUTH_METHODS.API_KEY) {
+    reqBody.headers['X-API-Key'] = secret
+  }
+  return request(reqBody)
 }
 
 module.exports = {
@@ -159,4 +192,7 @@ module.exports = {
   scanWithClamAV,
   postToBusAPI,
   downloadFile,
-};
+  parseAndValidateUrl,
+  moveFile,
+  postToCallbackURL
+}
