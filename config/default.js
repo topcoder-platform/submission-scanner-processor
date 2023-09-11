@@ -31,7 +31,7 @@ module.exports = {
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
-  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions', 'topcoder-submissions'],
-  WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : ['topcoder-dev-submissions-quarantine', 'topcoder-submissions-quarantine'],
-  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete']
+  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions', 'topcoder-submissions', 'topcoder-prod-media', 'topcoder-dev-media'],
+  WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : ['topcoder-dev-submissions-quarantine', 'topcoder-submissions-quarantine', 'topcoder-prod-media-quarantine', 'topcoder-dev-media-quarantine'],
+  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete', 'avscan.projects.assets.result']
 }
