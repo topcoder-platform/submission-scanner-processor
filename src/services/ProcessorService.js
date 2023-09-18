@@ -43,7 +43,7 @@ async function handleResult (message, bucket, key) {
  * @param {Object} message the message
  */
 async function processScan (message) {
-  const { region, bucket, key } = helper.parseAndValidateUrl(message.payload.url)
+  const { region, bucket, key } = helper.parseAndValidateUrl(decodeURIComponent(message.payload.url))
   if (region !== config.get('aws.REGION')) {
     throw new Error(`region must be ${config.get('aws.REGION')}`)
   }
