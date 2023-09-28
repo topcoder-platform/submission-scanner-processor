@@ -9,13 +9,6 @@ const { CALLBACK_OPTIONS, WEBHOOK_HTTP_METHODS, WEBHOOK_AUTH_METHODS } = require
 const config = require('config')
 
 async function handleResult (message, bucket, key) {
-  if (message.isInfected) {
-    await helper.postAlertToOpsgenie(
-      `Malicious file detected: File at ${message.payload.url} is malicious.${message.moveFile ? ` The file will be moved to the ${message.payload.quarantineDestinationBucket} bucket` : ''}`,
-      config.OPSGENIE_SOURCE,
-      message.moveFile ? 'P2' : 'P1'
-    )
-  }
   if (message.moveFile) {
     // Move the file to the appropriate bucket
     const newBucket = message.isInfected ? message.quarantineDestinationBucket : message.cleanDestinationBucket
@@ -26,6 +19,14 @@ async function handleResult (message, bucket, key) {
       message.fileName
     )
     message.url = `https://s3.amazonaws.com/${newBucket}/${message.fileName}`
+  }
+
+  if (message.isInfected) {
+    await helper.postAlertToOpsgenie(
+      `Malicious file detected: File at ${message.url} is malicious.${message.moveFile ? ` The file has been moved to the ${message.quarantineDestinationBucket} bucket` : ''}`,
+      config.OPSGENIE_SOURCE,
+      message.moveFile ? 'P2' : 'P1'
+    )
   }
 
   // Notify the caller
