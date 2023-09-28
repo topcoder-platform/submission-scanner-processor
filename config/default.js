@@ -38,5 +38,6 @@ module.exports = {
 
   OPSGENIE_API_URL: process.env.OPSGENIE_API_URL || 'https://api.opsgenie.com/v2/alerts',
   OPSGENIE_API_KEY: process.env.OPSGENIE_API_KEY,
-  OPSGENIE_SOURCE: process.env.OPSGENIE_SOURCE || 'DevOps'
+  OPSGENIE_SOURCE: process.env.OPSGENIE_SOURCE || 'DevOps',
+  OPGENIE_ENABLED: process.env.OPGENIE_ENABLED === 'true' || false,
 }
