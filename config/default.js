@@ -34,5 +34,9 @@ module.exports = {
   // Whitelisted buckets and topics
   WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions', 'topcoder-submissions', 'topcoder-prod-media', 'topcoder-dev-media'],
   WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : ['topcoder-dev-submissions-quarantine', 'topcoder-submissions-quarantine', 'topcoder-prod-media-quarantine', 'topcoder-dev-media-quarantine'],
-  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete', 'avscan.projects.assets.result']
+  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete', 'avscan.projects.assets.result'],
+
+  OPSGENIE_API_URL: process.env.OPSGENIE_API_URL,
+  OPSGENIE_API_KEY: process.env.OPSGENIE_API_KEY,
+  OPSGENIE_SOURCE: process.env.OPSGENIE_SOURCE || 'DevOps'
 }

@@ -187,6 +187,21 @@ async function postToCallbackURL (webHookOptions, data) {
   return request(reqBody)
 }
 
+/**
+ * Post alert to Opsgenie
+ * @param {String} message the message
+ * @param {String} source the source
+ * @param {String} priority the priority
+ */
+async function postAlertToOpsgenie (message, source, priority) {
+  return request.post(config.OPSGENIE_API_URL, { message, source, priority }, {
+    headers: {
+      Authorization: `GenieKey ${config.OPSGENIE_API_KEY}`,
+      'Content-Type': 'application/json'
+    }
+  })
+}
+
 module.exports = {
   isZipBomb,
   scanWithClamAV,
@@ -194,5 +209,6 @@ module.exports = {
   downloadFile,
   parseAndValidateUrl,
   moveFile,
-  postToCallbackURL
+  postToCallbackURL,
+  postAlertToOpsgenie
 }
