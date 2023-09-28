@@ -194,12 +194,21 @@ async function postToCallbackURL (webHookOptions, data) {
  * @param {String} priority the priority
  */
 async function postAlertToOpsgenie (message, source, priority) {
-  return request.post(config.OPSGENIE_API_URL, { message, source, priority }, {
-    headers: {
-      Authorization: `GenieKey ${config.OPSGENIE_API_KEY}`,
-      'Content-Type': 'application/json'
-    }
-  })
+  logger.info('Posting alert to Opsgenie')
+  // print details
+  logger.info(`message: ${message}`)
+  logger.info(`source: ${source}`)
+  logger.info(`priority: ${priority}`)
+  try {
+    request.post(config.OPSGENIE_API_URL, { message, source, priority }, {
+      headers: {
+        Authorization: `GenieKey ${config.OPSGENIE_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    })
+  } catch (err) {
+    logger.error(err)
+  }
 }
 
 module.exports = {
