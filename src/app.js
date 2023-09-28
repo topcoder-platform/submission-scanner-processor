@@ -1,7 +1,6 @@
 /**
  * The application entry point
  */
-require('dotenv').config()
 global.Promise = require('bluebird')
 const config = require('config')
 const logger = require('./common/logger')

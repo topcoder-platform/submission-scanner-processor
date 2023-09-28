@@ -200,7 +200,7 @@ async function postAlertToOpsgenie (message, source, priority) {
   logger.info(`source: ${source}`)
   logger.info(`priority: ${priority}`)
   try {
-    await request.post(config.OPSGENIE_API_URL, { message, source, priority }, {
+    request.post(config.OPSGENIE_API_URL, { message, source, priority }, {
       headers: {
         Authorization: `GenieKey ${config.OPSGENIE_API_KEY}`,
         'Content-Type': 'application/json'
