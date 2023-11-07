@@ -50,7 +50,7 @@ jobs:
           command: |
             ./awsconfiguration.sh QA
             source awsenvconf
-            ./buildenv.sh -e QA -b qa-global-appvar,qa-submission-scanner-processor-buildvar
+            ./buildenv.sh -e QA -b qa-global-appvar,qa-file-scanner-processor-buildvar
             source buildenvvar
             ./deploy.sh tc-submission-scanner QA
   "build-prod":
