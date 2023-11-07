@@ -25,13 +25,19 @@ module.exports = {
   CLAMAV_PORT: process.env.CLAMAV_PORT || 3310,
   BUSAPI_EVENTS_URL: process.env.BUSAPI_EVENTS_URL || 'https://api.topcoder-dev.com/v5/bus/events',
   AUTH0_URL: process.env.AUTH0_URL, // Auth0 credentials for Submission scoring processor
-  AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE || 'https://www.topcoder.com',
+  AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
   TOKEN_CACHE_TIME: process.env.TOKEN_CACHE_TIME,
   AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
-  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : ['topcoder-dev-submissions', 'topcoder-submissions'],
-  WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : ['topcoder-dev-submissions-quarantine', 'topcoder-submissions-quarantine'],
-  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : ['submission.scan.complete']
+  // Whitelisted buckets and topics
+  WHITELISTED_CLEAN_BUCKETS: process.env.WHITELISTED_CLEAN_BUCKETS ? process.env.WHITELISTED_CLEAN_BUCKETS.split(',') : [],
+  WHITELISTED_QUARANTINE_BUCKETS: process.env.WHITELISTED_QUARANTINE_BUCKETS ? process.env.WHITELISTED_QUARANTINE_BUCKETS.split(',') : [],
+  WHITELISTED_KAFKA_TOPICS: process.env.WHITELISTED_KAFKA_TOPICS ? process.env.WHITELISTED_KAFKA_TOPICS.split(',') : [],
+
+  OPSGENIE_API_URL: process.env.OPSGENIE_API_URL || 'https://api.opsgenie.com/v2/alerts',
+  OPSGENIE_API_KEY: process.env.OPSGENIE_API_KEY,
+  OPSGENIE_SOURCE: process.env.OPSGENIE_SOURCE || 'DevOps',
+  OPGENIE_ENABLED: process.env.OPGENIE_ENABLED === 'true' || false
 }

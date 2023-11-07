@@ -21,6 +21,14 @@ async function handleResult (message, bucket, key) {
     message.url = `https://s3.amazonaws.com/${newBucket}/${message.fileName}`
   }
 
+  if (message.isInfected && config.OPGENIE_ENABLED) {
+    await helper.postAlertToOpsgenie(
+      `Malicious file detected: File at ${message.url} is malicious.${message.moveFile ? ` The file has been moved to the ${message.quarantineDestinationBucket} bucket` : ''}`,
+      config.OPSGENIE_SOURCE,
+      message.moveFile ? 'P2' : 'P1'
+    )
+  }
+
   // Notify the caller
   if (message.callbackOption !== CALLBACK_OPTIONS.NO_CALLBACK) {
     const payload = _.omit(message, ['moveFile', 'cleanDestinationBucket', 'quarantineDestinationBucket', 'callbackOption', 'callbackHook', 'callbackKafkaTopic'])
