@@ -1,7 +1,7 @@
 version: 2
 defaults: &defaults
   docker:
-  - image: cimg/python:3.11.0-browsers
+    - image: cimg/python:3.11.0-browsers
 install_dependency: &install_dependency
   name: Installation of build and deployment dependencies.
   command: |
@@ -15,7 +15,7 @@ install_dependency: &install_dependency
 install_deploysuite: &install_deploysuite
   name: Installation of install_deploysuite.
   command: |
-    git clone --branch v1.4 https://github.com/topcoder-platform/tc-deploy-scripts ../buildscript
+    git clone --branch v1.4.16 https://github.com/topcoder-platform/tc-deploy-scripts ../buildscript
     cp ./../buildscript/master_deploy.sh .
     cp ./../buildscript/buildenv.sh .
     cp ./../buildscript/awsconfiguration.sh .
@@ -37,6 +37,22 @@ jobs:
             ./buildenv.sh -e DEV -b dev-global-appvar,dev-file-scanner-processor-buildvar
             source buildenvvar
             ./deploy.sh av-scanner-service DEV
+  "build-qa":
+    <<: *defaults
+    steps:
+      # Initialization.
+      - checkout
+      - setup_remote_docker
+      - run: *install_dependency
+      - run: *install_deploysuite
+      - deploy:
+          name: Running deployment.
+          command: |
+            ./awsconfiguration.sh QA
+            source awsenvconf
+            ./buildenv.sh -e QA -b qa-global-appvar,qa-submission-scanner-processor-buildvar
+            source buildenvvar
+            ./deploy.sh tc-submission-scanner QA
   "build-prod":
     <<: *defaults
     steps:
@@ -64,6 +80,12 @@ workflows:
             branches:
               only:
                 - develop
+      - "build-qa":
+          context: org-global
+          filters:
+            branches:
+              only:
+                - qa
       - "build-prod":
           context: org-global
           filters:
