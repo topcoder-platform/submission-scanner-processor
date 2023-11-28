@@ -7,6 +7,9 @@ const config = require('config')
 const clamav = require('clamav.js')
 const streamifier = require('streamifier')
 const logger = require('./logger')
+const fs = require('fs')
+const yauzl = require('yauzl')
+const { Readable } = require('stream')
 const request = require('axios').default
 const m2mAuth = require('tc-core-library-js').auth.m2m
 const { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
@@ -88,6 +91,94 @@ function isZipBomb (fileBuffer) {
   } else {
     return [true, error.code, error.message]
   }
+}
+
+/**
+ * helper function for findMagicString
+ * Expecting a zip file
+ * @param {string} zipFilePath 
+ * @param {string} fileNameToFind 
+ * @param {string} searchText 
+ * @param {*} callback 
+ */
+function checkZipFile(zipFilePath, fileNameToFind, searchText, callback) {
+  fs.access(zipFilePath, fs.constants.F_OK, (err) => {
+    if (err) {
+      callback('Zip file "${zipFilePath}" does not exist')
+    } else {
+      yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipfile) => {
+        if (err) {
+          callback('Error opening zip file "${zipFilePath}"')
+        } else {
+          zipfile.readEntry()
+          zipfile.on('entry', (entry) => {
+            console.log(`File "${entry.fileName}" exists`);
+            //console.log(entry.fileName.endsWith(fileNameToFind));
+            if (entry.fileName.endsWith(fileNameToFind)) {
+              zipfile.openReadStream(entry, (err, readStream) => {
+                if (err) {
+                  callback('Error reading file stream "${zipFilePath}"')
+                } else {
+                  let data = ''
+                  readStream.on('data', (chunk) => {
+                    data += chunk.toString()
+                  })
+                  //console.log(`Will check for the text "${entry.fileName}"`);
+                  readStream.on('end', () => {
+                    if (data.includes(searchText)) {
+                      callback(null, true)
+                    } else {
+                      callback(null, false)
+                    }
+                  })
+                }
+              })
+            } else {
+              zipfile.readEntry()
+            }
+          });
+
+          zipfile.on('end', () => {
+            callback('File not found in zip  "${zipFilePath}"')
+          })
+
+          zipfile.on('error', (err) => {
+            callback('Error reading zip file  "${zipFilePath}"')
+          })
+        }
+      })
+    }
+  })
+}
+
+
+/**
+ * check if the file contains a file name .tcData
+ *
+ * @param {string} file the zip file
+ * @returns
+ * true if .tcData file is found and it contains the Magic string: TCFastCheetah_2001
+ * otherwise returns false
+ */
+function findMagicString(zipFilePath)
+{
+  const searchFileName = '.tcData'
+  const searchText = 'TCFastCheetah_2001'
+  checkZipFile(zipFilePath, searchFileName, searchText, (err, exists) => {
+    if (err) {
+      console.error(err)
+      return false;
+    } else {
+      if (exists) {
+        console.log(`File "${searchFileName}" exists in the zip file:"${zipFilePath}" and contains the text "${searchText}"`)
+        return true;
+      } else {
+        console.log(`File "${searchFileName}" is found in the zip file:"${zipFilePath}" but does not contain the text "${searchText}"`)
+        return false;
+      }
+    }
+  })
+
 }
 
 async function scanWithClamAV (file) {
