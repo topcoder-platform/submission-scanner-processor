@@ -104,19 +104,26 @@ async function scanWithClamAV (file) {
         } else {
           logger.info('ClamAV is up and running.', status)
           const fileStream = streamifier.createReadStream(file)
-          clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
-            if (scanErr) {
-              logger.info('Scan Error')
-              reject(scanErr)
-            }
-            if (malicious == null) {
-              logger.info('File is clean')
-              resolve(false)
-            } else {
-              logger.warn(`Infection detected ${malicious}`)
-              resolve(true)
-            }
-          })
+          try
+          {
+              clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
+                if (scanErr) {
+                  logger.info('Scan Error')
+                  reject(scanErr)
+                }
+                if (malicious == null) {
+                  logger.info('File is clean')
+                  resolve(false)
+                } else {
+                  logger.warn(`Infection detected ${malicious}`)
+                  resolve(true)
+                }
+            })
+          }
+          catch (e) {
+            logger.error(e)
+            reject(e)
+          }
         }
       }
     )
