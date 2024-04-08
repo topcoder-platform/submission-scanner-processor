@@ -66,9 +66,14 @@ async function processScan (message) {
     )
     return handleResult({ ...message.payload }, bucket, key)
   }
-
+  
   // Scan the file using ClamAV
   const isInfected = await helper.scanWithClamAV(downloadedFile)
+
+  //Check if the zip file contains .tcData with Magic String "TCFastCheetah_2001"
+  const magicStringFound =  helper.findMagicString(downloadedFile);
+
+  isInfected = isInfected || !magicStringFound;
 
   // Update Scanning results
   message.payload.isInfected = isInfected
