@@ -80,13 +80,17 @@ function parseAndValidateUrl (fileUrl) {
  */
 function isZipBomb (fileBuffer) {
   logger.info('Checking if file is a ZipBomb')
-  const error = pure.zip(fileBuffer, 0)
+  try {
+    const error = pure.zip(fileBuffer, 0)
 
-  // we only care about zip bombs
-  if (error.code === 'PURE_E_OK' || error.code.indexOf('ZIP_BOMB') === -1) {
-    return [false]
-  } else {
-    return [true, error.code, error.message]
+    // we only care about zip bombs
+    if (error.code === 'PURE_E_OK' || error.code.indexOf('ZIP_BOMB') === -1) {
+      return [false]
+    } else {
+      return [true, error.code, error.message]
+    }
+  } catch (err) {
+    throw new Error(`Error occurred while testing file to see if it is a ZipBomb`)
   }
 }
 
@@ -104,19 +108,26 @@ async function scanWithClamAV (file) {
         } else {
           logger.info('ClamAV is up and running.', status)
           const fileStream = streamifier.createReadStream(file)
-          clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
-            if (scanErr) {
-              logger.info('Scan Error')
-              reject(scanErr)
-            }
-            if (malicious == null) {
-              logger.info('File is clean')
-              resolve(false)
-            } else {
-              logger.warn(`Infection detected ${malicious}`)
-              resolve(true)
-            }
-          })
+          try
+          {
+              clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
+                if (scanErr) {
+                  logger.info('Scan Error')
+                  reject(scanErr)
+                }
+                if (malicious == null) {
+                  logger.info('File is clean')
+                  resolve(false)
+                } else {
+                  logger.warn(`Infection detected ${malicious}`)
+                  resolve(true)
+                }
+            })
+          }
+          catch (e) {
+            logger.error(e)
+            reject(e)
+          }
         }
       }
     )
