@@ -7,7 +7,7 @@ task_definition:
       mem_limit: 12G
     app:
       cpu_shares: 200
-      mem_limit: 2560MB
+      mem_limit: ${APP_MEMORY}
     filescanner:
       cpu_shares: 696
-      mem_limit: 12G
+      mem_limit: ${SCANNER_MEMORY}
