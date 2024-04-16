@@ -58,14 +58,14 @@ async function processScan (message) {
   const downloadedFile = await helper.downloadFile(bucket, key)
 
   // Check if the file is a ZipBomb
-  /*const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile)
+  const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile)
   if (isZipBomb) {
     message.payload.isInfected = true
     logger.warn(
       `File at ${message.payload.url} is a ZipBomb. ${errorCode}: ${errorMessage}`
     )
     return handleResult({ ...message.payload }, bucket, key)
-  }*/
+  }
 
   // Scan the file using ClamAV
   const isInfected = await helper.scanWithClamAV(downloadedFile)
