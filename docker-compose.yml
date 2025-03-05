@@ -5,11 +5,12 @@ services:
     container_name: clamav-scanner
     environment:
       - CLAMAV_NO_MILTERD=true
-    hostname: filescanner
     restart: always
     build:
       context: .
       dockerfile: clamav-docker/Dockerfile
+    ports:
+      - "3310:3310"      
     logging:
       driver: awslogs
       options:
@@ -24,11 +25,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     ports:
-      - "0:3000"
-    links:
-      - filescanner
+      - "3000:3000"
     environment:
-      - CLAMAV_HOST=filescanner
+      - CLAMAV_HOST=localhost
       - CLAMAV_PORT=3310
     depends_on:
       - filescanner
