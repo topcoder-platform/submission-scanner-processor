@@ -73,7 +73,7 @@ echo $DOCKER_PASSWD | docker login -u $DOCKER_USER --password-stdin
 # configure_aws_cli
 sed -i='' "s|app:latest|$TAG|" docker-compose.yml
 sed -i='' "s|scanner:latest|$CLAMAVTAG|" docker-compose.yml
-docker-compose build
+docker compose build
 #docker tag app:latest $TAG
 eval $(aws ecr get-login --region $AWS_REGION --no-include-email)
 docker push $CLAMAVTAG
