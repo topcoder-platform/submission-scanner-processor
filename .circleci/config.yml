@@ -22,7 +22,7 @@ install_deploysuite: &install_deploysuite
 build_and_deploy_steps: &build_and_deploy_steps
     - checkout
     - setup_remote_docker
-    - run: *nstall_dependency
+    - run: *install_dependency
     - run: *install_deploysuite
     - deploy:
         name: Running deployment.
