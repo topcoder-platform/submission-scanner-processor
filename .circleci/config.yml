@@ -69,12 +69,6 @@ workflows:
             branches:
               only:
                 - develop
-      - "build-qa":
-          context: org-global
-          filters:
-            branches:
-              only:
-                - qa
       - "build-prod":
           context: org-global
           filters:
