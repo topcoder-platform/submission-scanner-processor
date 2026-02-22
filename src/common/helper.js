@@ -25,31 +25,95 @@ const { WEBHOOK_AUTH_METHODS } = require('./constants')
 const s3 = new S3Client({ region: config.get('aws.REGION') })
 
 // Initialize ClamAV
+const CLAMAV_VERSION_TIMEOUT = 500
+const CLAMAV_RETRY_DELAY = 5000
+const CLAMAV_SCANNER_WAIT_TIMEOUT = 15000
 let clamavScanner = null
-const initClamAvScanner = () => {
-  setTimeout(() => {
-    logger.info('Checking ClamAV Status.')
+let clamavScannerInitialization = null
+
+/**
+ * Sleep helper used while waiting for ClamAV to become available.
+ * @param {Number} delayInMs wait time in milliseconds
+ * @returns {Promise<void>} resolves after delay
+ */
+function wait (delayInMs) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayInMs)
+  })
+}
+
+/**
+ * Get ClamAV engine/version status.
+ * @returns {Promise<String>} clamd version status text
+ * @throws {Error} when clamd is unreachable or times out
+ */
+function getClamAvVersion () {
+  return new Promise((resolve, reject) => {
     clamav.version(
       config.CLAMAV_PORT,
       config.CLAMAV_HOST,
-      500,
+      CLAMAV_VERSION_TIMEOUT,
       (error, status) => {
         if (error) {
-          logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`)
-          initClamAvScanner()
+          reject(error)
         } else {
+          resolve(status)
+        }
+      }
+    )
+  })
+}
+
+/**
+ * Ensure there is an initialized scanner instance before any scans are run.
+ * This is used both at startup and by scan requests to avoid a null scanner race.
+ * @param {Number} maxWaitInMs maximum wait time in milliseconds (0 = no timeout)
+ * @returns {Promise<Object>} scanner returned by clamav.js createScanner
+ * @throws {Error} when scanner could not be initialized in time
+ */
+async function ensureClamAvScanner (maxWaitInMs = 0) {
+  if (clamavScanner) {
+    return clamavScanner
+  }
+
+  if (!clamavScannerInitialization) {
+    clamavScannerInitialization = (async () => {
+      while (!clamavScanner) {
+        logger.info('Checking ClamAV Status.')
+        try {
+          const status = await getClamAvVersion()
           logger.info('ClamAV connection established.', status)
           clamavScanner = clamav.createScanner(
             config.CLAMAV_PORT,
             config.CLAMAV_HOST
           )
+        } catch (error) {
+          logger.info(`ClamAV not live yet. ${JSON.stringify(error)}`)
+          await wait(CLAMAV_RETRY_DELAY)
         }
       }
-    )
-  }, 5000)
+
+      return clamavScanner
+    })().finally(() => {
+      clamavScannerInitialization = null
+    })
+  }
+
+  if (maxWaitInMs > 0) {
+    return Promise.race([
+      clamavScannerInitialization,
+      wait(maxWaitInMs).then(() => {
+        throw new Error(`Timed out waiting for ClamAV scanner initialization after ${maxWaitInMs}ms`)
+      })
+    ])
+  }
+
+  return clamavScannerInitialization
 }
 
-initClamAvScanner()
+ensureClamAvScanner().catch((error) => {
+  logger.error('Unexpected scanner initialization failure', error)
+})
 
 /**
  * Function to download file from given URL
@@ -90,47 +154,49 @@ function isZipBomb (fileBuffer) {
       return [true, error.code, error.message]
     }
   } catch (err) {
-    throw new Error(`Error occurred while testing file to see if it is a ZipBomb`)
+    throw new Error('Error occurred while testing file to see if it is a ZipBomb')
   }
 }
 
+/**
+ * Scan a file buffer through clamd and return infection status.
+ * @param {Buffer} file file content buffer
+ * @returns {Promise<Boolean>} true if infected, false when clean
+ * @throws {Error} when ClamAV is unavailable or scan fails
+ */
 async function scanWithClamAV (file) {
   logger.info('Scanning file with ClamAV')
+  const scanner = await ensureClamAvScanner(CLAMAV_SCANNER_WAIT_TIMEOUT)
+
+  try {
+    const status = await getClamAvVersion()
+    logger.info('ClamAV is up and running.', status)
+  } catch (error) {
+    logger.error('Unable to communicate with ClamAV')
+    throw error
+  }
+
   return new Promise((resolve, reject) => {
-    clamav.version(
-      config.CLAMAV_PORT,
-      config.CLAMAV_HOST,
-      500,
-      (error, status) => {
-        if (error) {
-          logger.error('Unable to communicate with ClamAV')
-          reject(error)
-        } else {
-          logger.info('ClamAV is up and running.', status)
-          const fileStream = streamifier.createReadStream(file)
-          try
-          {
-              clamavScanner.scan(fileStream, (scanErr, object, malicious) => {
-                if (scanErr) {
-                  logger.info('Scan Error')
-                  reject(scanErr)
-                }
-                if (malicious == null) {
-                  logger.info('File is clean')
-                  resolve(false)
-                } else {
-                  logger.warn(`Infection detected ${malicious}`)
-                  resolve(true)
-                }
-            })
-          }
-          catch (e) {
-            logger.error(e)
-            reject(e)
-          }
+    const fileStream = streamifier.createReadStream(file)
+    try {
+      scanner.scan(fileStream, (scanErr, object, malicious) => {
+        if (scanErr) {
+          logger.info('Scan Error')
+          reject(scanErr)
+          return
         }
-      }
-    )
+        if (malicious == null) {
+          logger.info('File is clean')
+          resolve(false)
+        } else {
+          logger.warn(`Infection detected ${malicious}`)
+          resolve(true)
+        }
+      })
+    } catch (error) {
+      logger.error(error)
+      reject(error)
+    }
   })
 }
 
