@@ -5,11 +5,10 @@
 const _ = require('lodash')
 const config = require('config')
 const clamav = require('clamav.js')
-const streamifier = require('streamifier')
 const logger = require('./logger')
 const request = require('axios').default
 const m2mAuth = require('tc-core-library-js').auth.m2m
-const { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
+const { S3Client, HeadObjectCommand, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const m2m = m2mAuth(
   _.pick(config, [
     'AUTH0_URL',
@@ -30,6 +29,8 @@ const CLAMAV_RETRY_DELAY = 5000
 const CLAMAV_SCANNER_WAIT_TIMEOUT = 15000
 let clamavScanner = null
 let clamavScannerInitialization = null
+let activeScans = 0
+const scanQueue = []
 
 /**
  * Sleep helper used while waiting for ClamAV to become available.
@@ -40,6 +41,49 @@ function wait (delayInMs) {
   return new Promise((resolve) => {
     setTimeout(resolve, delayInMs)
   })
+}
+
+/**
+ * Reserve a ClamAV scan slot so large file scans do not run without bounds.
+ * @returns {Promise<Function>} resolves with a release callback for the scan slot
+ */
+function acquireScanSlot () {
+  return new Promise((resolve) => {
+    const grantSlot = () => {
+      activeScans += 1
+      resolve(releaseScanSlot)
+    }
+
+    if (activeScans < config.SCAN_CONCURRENCY) {
+      grantSlot()
+    } else {
+      logger.info(`ClamAV scan queued. activeScans=${activeScans}, queuedScans=${scanQueue.length + 1}`)
+      scanQueue.push(grantSlot)
+    }
+  })
+}
+
+/**
+ * Release a ClamAV scan slot and wake the next queued scan, if any.
+ * @returns {void}
+ */
+function releaseScanSlot () {
+  activeScans = Math.max(0, activeScans - 1)
+  const nextScan = scanQueue.shift()
+  if (nextScan) {
+    nextScan()
+  }
+}
+
+/**
+ * Destroy a stream when an in-flight scan fails before consuming the full body.
+ * @param {Object} stream readable stream to destroy
+ * @returns {void}
+ */
+function destroyStream (stream) {
+  if (stream && typeof stream.destroy === 'function' && !stream.destroyed) {
+    stream.destroy()
+  }
 }
 
 /**
@@ -116,15 +160,59 @@ ensureClamAvScanner().catch((error) => {
 })
 
 /**
+ * Get S3 metadata for a file without downloading the object body.
+ * @param {String} bucket Bucket of the file to inspect
+ * @param {String} key Key of the file to inspect
+ * @returns {Promise<Object>} object metadata including contentLength in bytes
+ * @throws {Error} when the object metadata cannot be read from S3
+ */
+async function getFileMetadata (bucket, key) {
+  logger.info(`getFileMetadata(): file is on S3 ${bucket} / ${key}`)
+  const fileMetadata = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
+  return {
+    contentLength: fileMetadata.ContentLength
+  }
+}
+
+/**
+ * Get a readable S3 stream for a file without buffering it in memory.
+ * @param {String} bucket Bucket of the file to stream
+ * @param {String} key Key of the file to stream
+ * @returns {Promise<Object>} readable stream of the S3 object body
+ * @throws {Error} when the object body cannot be opened from S3
+ */
+async function getFileStream (bucket, key) {
+  logger.info(`getFileStream(): file is on S3 ${bucket} / ${key}`)
+  const downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+  if (!downloadedFile.Body) {
+    throw new Error(`S3 object ${bucket}/${key} did not include a readable body`)
+  }
+  return downloadedFile.Body
+}
+
+/**
+ * Convert a readable stream into a Buffer for legacy callers that require it.
+ * @param {Object} stream readable stream to consume
+ * @returns {Promise<Buffer>} buffer containing the full stream contents
+ * @throws {Error} when the stream cannot be read
+ */
+async function streamToBuffer (stream) {
+  const chunks = []
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  return Buffer.concat(chunks)
+}
+
+/**
  * Function to download file from given URL
  * @param {String} bucket Bucket of the file to be downloaded
  * @param {String} key Key of the file to be downloaded
- * @returns {Buffer} Buffer of downloaded file
+ * @returns {Promise<Buffer>} Buffer of downloaded file
  */
 async function downloadFile (bucket, key) {
   logger.info(`downloadFile(): file is on S3 ${bucket} / ${key}`)
-  const downloadedFile = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
-  return Buffer.concat(await downloadedFile.Body.toArray())
+  return streamToBuffer(await getFileStream(bucket, key))
 }
 
 function parseAndValidateUrl (fileUrl) {
@@ -159,45 +247,61 @@ function isZipBomb (fileBuffer) {
 }
 
 /**
- * Scan a file buffer through clamd and return infection status.
- * @param {Buffer} file file content buffer
+ * Determine whether a ClamAV error was caused by exceeding the stream size limit.
+ * @param {Error} error ClamAV scan error
+ * @returns {Boolean} true when the error is a ClamAV size-limit failure
+ */
+function isClamAvSizeLimitError (error) {
+  return Boolean(error && error.message && /INSTREAM size limit exceeded|Size limit reached/i.test(error.message))
+}
+
+/**
+ * Scan a readable file stream through clamd and return infection status.
+ * @param {Object} fileStream readable stream of file contents
  * @returns {Promise<Boolean>} true if infected, false when clean
  * @throws {Error} when ClamAV is unavailable or scan fails
  */
-async function scanWithClamAV (file) {
+async function scanWithClamAV (fileStream) {
   logger.info('Scanning file with ClamAV')
-  const scanner = await ensureClamAvScanner(CLAMAV_SCANNER_WAIT_TIMEOUT)
+  const releaseScanSlot = await acquireScanSlot()
 
   try {
-    const status = await getClamAvVersion()
-    logger.info('ClamAV is up and running.', status)
-  } catch (error) {
-    logger.error('Unable to communicate with ClamAV')
-    throw error
-  }
+    const scanner = await ensureClamAvScanner(CLAMAV_SCANNER_WAIT_TIMEOUT)
 
-  return new Promise((resolve, reject) => {
-    const fileStream = streamifier.createReadStream(file)
     try {
-      scanner.scan(fileStream, (scanErr, object, malicious) => {
-        if (scanErr) {
-          logger.info('Scan Error')
-          reject(scanErr)
-          return
-        }
-        if (malicious == null) {
-          logger.info('File is clean')
-          resolve(false)
-        } else {
-          logger.warn(`Infection detected ${malicious}`)
-          resolve(true)
-        }
-      })
+      const status = await getClamAvVersion()
+      logger.info('ClamAV is up and running.', status)
     } catch (error) {
-      logger.error(error)
-      reject(error)
+      logger.error('Unable to communicate with ClamAV')
+      throw error
     }
-  })
+
+    return await new Promise((resolve, reject) => {
+      try {
+        scanner.scan(fileStream, (scanErr, object, malicious) => {
+          if (scanErr) {
+            logger.info('Scan Error')
+            destroyStream(fileStream)
+            reject(scanErr)
+            return
+          }
+          if (malicious == null) {
+            logger.info('File is clean')
+            resolve(false)
+          } else {
+            logger.warn(`Infection detected ${malicious}`)
+            resolve(true)
+          }
+        })
+      } catch (error) {
+        logger.error(error)
+        destroyStream(fileStream)
+        reject(error)
+      }
+    })
+  } finally {
+    releaseScanSlot()
+  }
 }
 
 /* Function to get M2M token
@@ -290,6 +394,9 @@ async function postAlertToOpsgenie (message, source, priority) {
 
 module.exports = {
   isZipBomb,
+  isClamAvSizeLimitError,
+  getFileMetadata,
+  getFileStream,
   scanWithClamAV,
   postToBusAPI,
   downloadFile,

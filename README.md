@@ -23,10 +23,20 @@ The following parameters can be set in config files or in env variables:
 - AVSCAN_TOPIC: Topic for AV Scan related actions, default value is 'avscan.action.scan'
 - CLAMAV_HOST: Host of Clam AV
 - CLAMAV_PORT: Port of Clam AV
+- MAX_SCAN_FILE_SIZE_BYTES: Maximum S3 object size accepted for scanning; default value is 524288000 (500 MiB).
+- SCAN_CONCURRENCY: Maximum number of concurrent ClamAV scans in one processor task; default value is 1.
 - BUSAPI_EVENTS_URL: Bus API Events URL
 - AWS_REGION: AWS Region of S3 bucket if there is a need to read files from S3 bucket
 
-Also note that there is a `/health` endpoint that checks for the health of the app. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable
+Also note that there is a `/health` endpoint that checks process liveness only. It intentionally does not fail on transient Kafka broker connection state because this service is a Kafka worker and ECS should not recycle the task during Kafka rebalances or short broker reconnects. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable.
+
+## Scan limits and failure behavior
+
+Before scanning, the processor reads S3 object metadata and compares `ContentLength` to `MAX_SCAN_FILE_SIZE_BYTES`. If the object is too large, the processor does not download it. The result payload is marked with `status: "scan-failed"`, `isInfected: true`, `scanError: "file-size-exceeded"`, and `scanErrorMessage`, then normal result handling runs. When `moveFile` is true, this routes the file to the quarantine bucket.
+
+The same fail-closed result is used if ClamAV rejects an in-flight stream with an INSTREAM size-limit error. Other unexpected processing errors are logged and the Kafka offset is not committed, allowing the message to be retried.
+
+S3 files are streamed into ClamAV instead of buffered into memory. Use `SCAN_CONCURRENCY` to control how many scans can run inside one ECS task at the same time. Keep this value conservative because ClamAV memory usage increases with large files, archive expansion, and signature database reloads.
 
 ## Local Kafka setup
 

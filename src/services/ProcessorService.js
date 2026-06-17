@@ -8,6 +8,25 @@ const helper = require('../common/helper')
 const { CALLBACK_OPTIONS, WEBHOOK_HTTP_METHODS, WEBHOOK_AUTH_METHODS } = require('../common/constants')
 const config = require('config')
 
+const SCANNED_STATUS = 'scanned'
+const SCAN_FAILED_STATUS = 'scan-failed'
+const FILE_SIZE_EXCEEDED_ERROR_CODE = 'file-size-exceeded'
+
+/**
+ * Mark a scan payload as failed closed so callers receive a terminal result.
+ * @param {Object} payload scan request payload to update
+ * @param {String} errorCode machine-readable scan failure code
+ * @param {String} errorMessage human-readable scan failure detail
+ * @returns {Object} updated payload
+ */
+function markScanFailed (payload, errorCode, errorMessage) {
+  payload.status = SCAN_FAILED_STATUS
+  payload.isInfected = true
+  payload.scanError = errorCode
+  payload.scanErrorMessage = errorMessage
+  return payload
+}
+
 async function handleResult (message, bucket, key) {
   if (message.moveFile) {
     // Move the file to the appropriate bucket
@@ -49,13 +68,22 @@ async function handleResult (message, bucket, key) {
 /**
  * Process Scan request event
  * @param {Object} message the message
+ * @returns {Promise<Object>} processed scan payload result
+ * @throws {Error} when the request URL is invalid, S3 cannot be read, ClamAV is unavailable, or result delivery fails
  */
 async function processScan (message) {
   const { region, bucket, key } = helper.parseAndValidateUrl(message.payload.url)
   if (region !== config.get('aws.REGION')) {
     throw new Error(`region must be ${config.get('aws.REGION')}`)
   }
-  const downloadedFile = await helper.downloadFile(bucket, key)
+  const fileMetadata = await helper.getFileMetadata(bucket, key)
+  if (fileMetadata.contentLength > config.MAX_SCAN_FILE_SIZE_BYTES) {
+    const errorMessage = `File size ${fileMetadata.contentLength} bytes exceeds MAX_SCAN_FILE_SIZE_BYTES ${config.MAX_SCAN_FILE_SIZE_BYTES} bytes`
+    logger.warn(errorMessage)
+    return handleResult(markScanFailed({ ...message.payload }, FILE_SIZE_EXCEEDED_ERROR_CODE, errorMessage), bucket, key)
+  }
+
+  const fileStream = await helper.getFileStream(bucket, key)
 
   // Check if the file is a ZipBomb
   /* const [isZipBomb, errorCode, errorMessage] = helper.isZipBomb(downloadedFile)
@@ -68,9 +96,20 @@ async function processScan (message) {
   } */
 
   // Scan the file using ClamAV
-  const isInfected = await helper.scanWithClamAV(downloadedFile)
+  let isInfected
+  try {
+    isInfected = await helper.scanWithClamAV(fileStream)
+  } catch (error) {
+    if (helper.isClamAvSizeLimitError(error)) {
+      const errorMessage = `ClamAV rejected the stream because it exceeded the configured scan size limit: ${error.message}`
+      logger.warn(errorMessage)
+      return handleResult(markScanFailed({ ...message.payload }, FILE_SIZE_EXCEEDED_ERROR_CODE, errorMessage), bucket, key)
+    }
+    throw error
+  }
 
   // Update Scanning results
+  message.payload.status = SCANNED_STATUS
   message.payload.isInfected = isInfected
   return handleResult({ ...message.payload }, bucket, key)
 }
