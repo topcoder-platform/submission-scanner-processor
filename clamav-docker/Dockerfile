@@ -1,2 +1,2 @@
 FROM clamav/clamav:latest
-COPY clamd.conf /etc/clamav/clamd.conf
+COPY clamav-docker/clamd.conf /etc/clamav/clamd.conf
