@@ -11,10 +11,10 @@ task_definition:
       cpu_shares: 696
       mem_limit: 12G
     app:
-      cpu_shares: 200
+      cpu_shares: ${APP_CPU}
       mem_limit: ${APP_MEMORY}
     filescanner:
-      cpu_shares: 696
+      cpu_shares: ${SCANNER_CPU}
       mem_limit: ${SCANNER_MEMORY}
 run_params:
   network_configuration:
