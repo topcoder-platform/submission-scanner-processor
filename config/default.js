@@ -2,6 +2,20 @@
  * The default configuration file.
  */
 
+/**
+ * Parse a positive integer config value and fall back when it is absent or invalid.
+ * @param {String|Number} value raw environment/config value
+ * @param {Number} defaultValue value to use when the raw value is not a positive integer
+ * @returns {Number} parsed positive integer
+ */
+function parsePositiveInteger (value, defaultValue) {
+  const parsedValue = Number.parseInt(value, 10)
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : defaultValue
+}
+
+const DEFAULT_MAX_SCAN_FILE_SIZE_BYTES = 500 * 1024 * 1024
+const DEFAULT_SCAN_CONCURRENCY = 1
+
 module.exports = {
   DISABLE_LOGGING: process.env.DISABLE_LOGGING || false, // If true, logging will be disabled
   LOG_LEVEL: process.env.LOG_LEVEL || 'debug',
@@ -23,6 +37,8 @@ module.exports = {
   AVSCAN_TOPIC: process.env.AVSCAN_TOPIC || 'avscan.action.scan',
   CLAMAV_HOST: process.env.CLAMAV_HOST || 'filescanner',
   CLAMAV_PORT: process.env.CLAMAV_PORT || 3310,
+  MAX_SCAN_FILE_SIZE_BYTES: parsePositiveInteger(process.env.MAX_SCAN_FILE_SIZE_BYTES, DEFAULT_MAX_SCAN_FILE_SIZE_BYTES),
+  SCAN_CONCURRENCY: parsePositiveInteger(process.env.SCAN_CONCURRENCY, DEFAULT_SCAN_CONCURRENCY),
   BUSAPI_EVENTS_URL: process.env.BUSAPI_EVENTS_URL || 'https://api.topcoder-dev.com/v5/bus/events',
   AUTH0_URL: process.env.AUTH0_URL, // Auth0 credentials for Submission scoring processor
   AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,

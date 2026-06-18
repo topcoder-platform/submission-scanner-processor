@@ -55,30 +55,8 @@ const dataHandler = (messageSet, topic, partition) =>
       await consumer.commitOffset({ topic, partition, offset: m.offset })
     } catch (err) {
       logger.error(err)
-    } finally {
-      await consumer.commitOffset({ topic, partition, offset: m.offset })
     }
   })
-
-/*
- * Function to check if the Kafka connection is alive
- */
-function check () {
-  if (
-    !consumer.client.initialBrokers &&
-    !consumer.client.initialBrokers.length
-  ) {
-    return false
-  }
-  let connected = true
-  consumer.client.initialBrokers.forEach((conn) => {
-    if (!conn.connected) {
-      logger.error(`url ${conn.server()} - connected=${conn.connected}`)
-    }
-    connected = conn.connected & connected
-  })
-  return connected
-}
 
 consumer
   .init([{
@@ -88,7 +66,7 @@ consumer
   // consume configured topics
   .then(() => {
     logger.info('Initialized.......')
-    healthcheck.init([check])
+    healthcheck.init()
     logger.info('Adding topics successfully.......')
     logger.info(topics)
     logger.info('Kick Start.......')
